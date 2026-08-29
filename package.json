@@ -1,0 +1,45 @@
+{
+  "name": "pi-planning-html",
+  "version": "0.2.0",
+  "description": "A permission-backed, approval-gated HTML planning mode for Pi.",
+  "type": "module",
+  "keywords": [
+    "pi-package",
+    "pi",
+    "planning",
+    "plan-mode",
+    "prompt-template",
+    "extension"
+  ],
+  "files": [
+    "extensions",
+    "prompts",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm test && npm pack --dry-run"
+  },
+  "pi": {
+    "extensions": [
+      "./extensions/planning/index.ts"
+    ],
+    "prompts": [
+      "./prompts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "typebox": "*"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "^0.84.4",
+    "@types/node": "^22.19.19",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  }
+}
