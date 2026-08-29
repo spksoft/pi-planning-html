@@ -1,126 +1,75 @@
 # Pi Planning HTML
 
-A [Pi](https://pi.dev) package that provides `/plan`: a permission-backed, decision-grilling planning mode with revisioned HTML artifacts and explicit approval before implementation.
+A small [Pi](https://pi.dev) package with two commands:
 
-## What it adds
+- `/plan <request>` researches a request and creates one detailed standalone HTML plan.
+- `/execute-plan <planning-file.html>` extracts that plan to Markdown and starts implementing it.
 
-- a `/plan` prompt template for planner behavior;
-- a TypeScript extension that mechanically narrows the planning tool surface;
-- provenance-aware, deny-by-default tool-call enforcement;
-- dependency-aware decision trees and frontier-based question rounds;
-- explicit shared-understanding confirmation;
-- deterministic plans at `docs/plan/<topic>.html`;
-- mandatory detailed **What**, **Why**, and **How** for every task;
-- revision hashes, artifact verification, baseline drift checks, and direct approval;
-- guarded same-session or fresh-session execution handoff;
-- structured task progress and out-of-plan mutation gates.
+There is no approval lifecycle, task-progress system, permission gate, or automatic execution handoff.
 
 ## Install
-
-This package is distributed from GitHub, not npm:
 
 ```bash
 pi install git:github.com/spksoft/pi-planning-html
 ```
 
-For a reproducible installation, pin a tag or commit:
+For reproducible installs, pin a tag or commit:
 
 ```bash
 pi install git:github.com/spksoft/pi-planning-html@<tag-or-commit>
 ```
 
-Use `pi update --extensions` to reconcile an unpinned Git installation.
-
-## Use
-
-Start Pi in a trusted project and invoke:
+## Plan
 
 ```text
 /plan Add user authentication with passkeys
 ```
 
-The extension enters restricted Planning mode before Pi expands the prompt template. The planner then:
+`/plan` investigates the project, asks only material unresolved questions through Pi's native UI, and ends by creating an HTML file such as:
 
-1. reads applicable project instructions and investigates repository facts;
-2. maps user-owned decisions as a dependency tree;
-3. asks each ready frontier in a numbered round with recommended answers;
-4. confirms shared understanding;
-5. publishes a complete renderer-owned HTML revision;
-6. requests revision-bound review and approval; and
-7. hands the exact approved snapshot to guarded execution.
+```text
+docs/plan/add-passkey-authentication.html
+```
 
-Creating a plan never means approving it.
+The plan includes outcome and acceptance criteria, scope, constraints, findings, risks, assumptions, engineering considerations, end-to-end validation, and dependency-aware tasks and subtasks. Every task and subtask has detailed **What**, **Why**, **How**, affected files/modules, dependencies, and validation.
 
-## Task detail contract
+Planning is guidance-driven rather than a sandbox: the prompt tells the agent not to make project changes while planning, and `plan_publish` is the only package-owned planning write. This package does not add a permission-control policy.
 
-Every implementation task must include:
+## Execute a plan
 
-- **What** — the concrete change, expected result, and supported files/modules/symbols;
-- **Why** — the user outcome, evidence, settled decision, dependency, or risk that requires it;
-- **How** — the implementation approach, reuse points, data flow, errors, dependencies, and completion evidence.
+```text
+/execute-plan docs/plan/add-passkey-authentication.html
+```
 
-`plan_update` rejects the complete candidate when any task omits one of these fields, uses placeholder text, or lacks validation.
+The command reads the generated HTML, extracts its embedded canonical Markdown to the adjacent file:
 
-## Commands
+```text
+docs/plan/add-passkey-authentication.md
+```
 
-| Command | Purpose |
-| --- | --- |
-| `/plan <request>` | Enter restricted Planning mode and start a new plan. |
-| `/planning-status` | Show lifecycle, decisions, revision, artifact, and execution status. |
-| `/planning-review` | Return the current candidate to review. |
-| `/planning-approve <digest> [guarded\|review\|fresh]` | Approve one exact revision. |
-| `/planning-replan` | Return approved execution to restricted planning and invalidate approval. |
-| `/planning-cancel` | Cancel and restore the original tool set. |
-
-The model receives lifecycle tools for safe inspection, decision mapping, frontier rounds, understanding confirmation, exact evidence exceptions, plan publication, review, and task progress.
-
-## Planning-time boundary
-
-During Planning mode:
-
-- built-in `edit`, `write`, Bash, PowerShell, and unknown tools are inactive;
-- a universal `tool_call` gate independently verifies tool identity and provenance;
-- fixed Git/package inspection is available through `plan_inspect` without shell interpolation;
-- only `plan_update` may write, and only to the configured plan directory;
-- an uncertain evidence action requires a direct, short-lived, single-use exact permit;
-- delegated agents are not enabled unless a future adapter can mechanically attest to their read-only policy.
-
-This is Pi tool-policy enforcement, **not an OS sandbox**. User shell commands, extension code, compromised dependencies, and external services remain separate trust boundaries.
+It then starts a normal Pi implementation turn using that Markdown as the execution brief. If an active `subagent` tool is available, the agent is instructed to delegate only dependency-independent, well-bounded work; otherwise it implements the tasks directly. Integration and validation remain with the primary agent.
 
 ## Configuration
 
-Trusted projects may add `.pi/planning.json`:
+The default plan directory is `docs/plan`. To change only that directory, create `.pi/planning.json`:
 
 ```json
 {
   "artifact": {
-    "directory": "docs/plan"
-  },
-  "planning": {
-    "defaultTier": "auto",
-    "allowExactExceptions": true
-  },
-  "execution": {
-    "askOnDependencyChange": true
+    "directory": "docs/plans"
   }
 }
 ```
 
-The artifact directory must remain relative to the project and cannot traverse outside it. Project configuration is ignored until the project is trusted.
+The directory must be project-relative and cannot traverse outside the project.
 
 ## Package contents
 
-- `prompts/plan.md` — planning and grilling contract.
-- `extensions/planning/index.ts` — Pi integration and lifecycle composition.
-- `extensions/planning/decision-tree.ts` — dependency graph and frontier rounds.
-- `extensions/planning/policy.ts` — planning and guarded-execution policy.
-- `extensions/planning/schema.ts` — plan/task types and validation.
-- `extensions/planning/artifact.ts` — hashing, confined writes, and HTML/Markdown rendering.
-- `extensions/planning/state.ts` — persisted lifecycle and task progress.
-- `extensions/planning/approval.ts` — baseline and revision-bound approval records.
-- `extensions/planning/handoff.ts` — approved execution contract.
-- `extensions/planning/inspect-tool.ts` — fixed read-only inspection operations.
-- `tests/` — unit and lifecycle tests; excluded from the published package.
+- `prompts/plan.md` — the planning-only `/plan` contract.
+- `extensions/planning/index.ts` — `plan_question`, `plan_publish`, and `/execute-plan`.
+- `extensions/planning/schema.ts` — detailed plan and subtask validation.
+- `extensions/planning/artifact.ts` — standalone HTML rendering, safe artifact writing, and HTML-to-Markdown extraction.
+- `tests/` — unit and integration coverage.
 
 ## Development
 

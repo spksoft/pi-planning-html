@@ -1,58 +1,25 @@
-import {
-  answerDecision,
-  remapDecisionTree,
-} from "../extensions/planning/decision-tree.ts";
-import type { DecisionTree, PlanDraft } from "../extensions/planning/schema.ts";
-
-export function settledTree(): DecisionTree {
-  let tree = remapDecisionTree([
-    {
-      id: "session-policy",
-      question: "Should existing sessions remain valid during rollout?",
-      dependsOn: [],
-      factsReady: true,
-      factEvidence: ["Existing sessions are versioned."],
-      options: [
-        { id: "preserve", label: "Preserve existing sessions" },
-        { id: "reauth", label: "Require re-authentication" },
-      ],
-      recommendation: "preserve",
-      recommendationRationale: "It avoids unnecessary user disruption.",
-      impact: "This changes rollout and compatibility behavior.",
-      material: true,
-    },
-  ]);
-  tree = answerDecision(tree, "session-policy", {
-    value: "preserve",
-    label: "Preserve existing sessions",
-    kind: "option",
-    answeredAt: "2026-08-28T00:00:00.000Z",
-  });
-  return {
-    ...tree,
-    sharedUnderstanding: {
-      confirmedAt: "2026-08-28T00:01:00.000Z",
-      summary: "Preserve existing sessions during rollout.",
-      treeDigest: "test-tree-digest",
-    },
-  };
-}
+import type { PlanDraft } from "../extensions/planning/schema.ts";
 
 export function validDraft(overrides: Partial<PlanDraft> = {}): PlanDraft {
   return {
     title: "Add passkey authentication",
     slug: "add-passkey-authentication",
-    tier: "standard",
-    mainIdea:
-      "Extend the existing authentication boundary instead of adding a parallel identity stack.",
+    summary:
+      "Extend the established authentication boundary so passkeys reuse existing session issuance rather than create a parallel identity flow.",
     outcome:
-      "Users can sign in with passkeys while existing password sessions and recovery behavior remain available.",
+      "Registered users can sign in with passkeys while password sessions and recovery behavior continue to work unchanged.",
     acceptanceCriteria: [
       "A registered user can complete passkey sign-in and receive the existing session cookie.",
     ],
-    inScope: ["Passkey registration and sign-in"],
-    outOfScope: ["Removing password authentication"],
-    constraints: ["Reuse the existing session issuance service."],
+    inScope: [
+      "Passkey registration and sign-in through the existing authentication boundary.",
+    ],
+    outOfScope: [
+      "Removing password authentication or invalidating current sessions.",
+    ],
+    constraints: [
+      "Reuse the existing session issuance service and error response contract.",
+    ],
     findings: [
       {
         summary: "The authentication service already owns session issuance.",
@@ -69,7 +36,21 @@ export function validDraft(overrides: Partial<PlanDraft> = {}): PlanDraft {
         files: ["src/auth/types.ts", "src/auth/service.ts"],
         dependsOn: [],
         validation: [
-          "Run the focused authentication unit tests and confirm both credential variants pass.",
+          "Run focused authentication unit tests and confirm both credential variants pass.",
+        ],
+        subtasks: [
+          {
+            id: "add-assertion-types",
+            title: "Add assertion request and result types",
+            what: "Define the WebAuthn assertion fields alongside the existing password credential request types.",
+            why: "Route and service code need one explicit, typed contract for the new credential variant.",
+            how: "Add discriminated request and result types, preserve existing password fields, and update exhaustiveness checks at the verification boundary.",
+            files: ["src/auth/types.ts"],
+            dependsOn: ["extend-credential-contract"],
+            validation: [
+              "Run TypeScript type checking and focused contract unit tests for both credential variants.",
+            ],
+          },
         ],
       },
       {
@@ -83,30 +64,80 @@ export function validDraft(overrides: Partial<PlanDraft> = {}): PlanDraft {
         validation: [
           "Run route tests and manually verify success, invalid assertion, and recovery fallback behavior.",
         ],
+        subtasks: [
+          {
+            id: "cover-passkey-route",
+            title: "Cover route success and failure responses",
+            what: "Add route cases for a valid assertion, invalid assertion, and password recovery fallback.",
+            why: "The route must preserve its existing response and recovery contract for every supported credential path.",
+            how: "Reuse existing route fixtures and response assertions, then add passkey-specific fixtures at the service boundary instead of mocking cookies separately.",
+            files: ["tests/auth/routes.test.ts"],
+            dependsOn: ["wire-passkey-route"],
+            validation: [
+              "Run the focused route suite and verify cookie, validation error, and recovery responses.",
+            ],
+          },
+        ],
       },
     ],
     validation: [
-      "Run the authentication unit and route suites, then exercise registration and sign-in end to end.",
+      "Run authentication unit and route suites, then exercise registration and sign-in end to end in a supported browser.",
     ],
     risks: [
       {
         risk: "Browser or authenticator differences may produce incompatible assertion data.",
         severity: "medium",
         mitigation:
-          "Validate against the selected adapter and cover supported browser fixtures.",
+          "Validate against the selected adapter and cover supported browser fixtures before rollout.",
       },
     ],
     assumptions: [
       {
-        assumption: "Existing session cookies remain valid during rollout.",
+        assumption:
+          "Existing session cookies remain valid during the passkey rollout.",
         confidence: "high",
         impactIfFalse:
-          "A migration and forced re-authentication flow would be required.",
-        acknowledged: true,
+          "A migration and forced re-authentication flow would be required before deployment.",
       },
     ],
     openQuestions: [],
-    deepSections: [],
+    engineering: [
+      {
+        area: "architecture",
+        assessment:
+          "Extend the existing authentication boundary and credential adapter instead of introducing a parallel session service.",
+      },
+      {
+        area: "security",
+        assessment:
+          "Validate assertion origin, challenge, and replay protection in the existing trusted verification adapter.",
+      },
+      {
+        area: "data-and-migrations",
+        assessment:
+          "No destructive migration is expected; store passkey credentials through the established credential persistence abstraction.",
+      },
+      {
+        area: "testing",
+        assessment:
+          "Cover type, service, route, and browser-level flows with supported authenticator fixtures and existing recovery cases.",
+      },
+      {
+        area: "rollout-and-rollback",
+        assessment:
+          "Release behind a capability flag and disable the passkey path without changing password authentication if verification failures rise.",
+      },
+      {
+        area: "observability",
+        assessment:
+          "Record passkey verification success, rejection reason, and fallback usage through the existing authentication metrics path.",
+      },
+      {
+        area: "performance-and-accessibility",
+        assessment:
+          "Keep the sign-in form keyboard accessible and measure added verification latency against the current sign-in service budget.",
+      },
+    ],
     ...overrides,
   };
 }

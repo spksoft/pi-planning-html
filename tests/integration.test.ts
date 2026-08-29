@@ -2,272 +2,106 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import planningExtension from "../extensions/planning/index.ts";
 import { createHarness } from "./harness.ts";
 import { validDraft } from "./helpers.ts";
 
-const EXTENSION_PATH = fileURLToPath(
-      new URL("../extensions/planning/index.ts", import.meta.url),
-);
-
 async function bootstrap(options: { hasUI?: boolean } = {}) {
-      const cwd = await mkdtemp(join(tmpdir(), "pi-planning-integration-"));
-      const { pi, harness } = createHarness({
-            cwd,
-            extensionPath: EXTENSION_PATH,
-            ...options,
-      });
-      // SAFETY: the harness implements the ExtensionAPI surface this extension actually uses.
-      planningExtension(pi as never);
-      await harness.emit("session_start", { reason: "startup" });
-      return { cwd, harness };
+  const cwd = await mkdtemp(join(tmpdir(), "pi-planning-integration-"));
+  const { pi, harness } = createHarness({ cwd, ...options });
+  planningExtension(pi as never);
+  return { cwd, harness };
 }
 
-/** Drives the decision tree to a confirmed shared understanding. */
-async function reachDrafting(
-      harness: Awaited<ReturnType<typeof bootstrap>>["harness"],
-) {
-      await harness.callTool("plan_map_decisions", {
-            nodes: [
-                  {
-                        id: "session-policy",
-                        question: "Should existing sessions remain valid during rollout?",
-                        options: [
-                              {
-                                    id: "preserve",
-                                    label: "Preserve existing sessions",
-                              },
-                              {
-                                    id: "reauth",
-                                    label: "Require re-authentication",
-                              },
-                        ],
-                        recommendation: "preserve",
-                        recommendationRationale:
-                              "It avoids unnecessary user disruption.",
-                        impact: "This changes rollout and compatibility behavior.",
-                  },
-            ],
-      });
-      harness.queueSelect(
-            "Recommended · Preserve existing sessions [preserve]",
-      );
-      await harness.callTool("plan_ask_frontier", {
-            nodeIds: ["session-policy"],
-      });
-      harness.queueConfirm(true);
-      await harness.callTool("plan_confirm_understanding", {
-            summary: "Preserve existing sessions and reuse the authentication boundary.",
-      });
-}
-
-test("/plan enters restricted mode and narrows the active tool surface", async () => {
-      const { harness } = await bootstrap();
-      assert.ok(harness.activeTools.includes("edit"));
-
-      await harness.emit("input", {
-            text: "/plan Add passkeys",
-            source: "interactive",
-      });
-
-      assert.equal(harness.activeTools.includes("edit"), false);
-      assert.equal(harness.activeTools.includes("write"), false);
-      assert.equal(harness.activeTools.includes("bash"), false);
-      assert.ok(harness.activeTools.includes("plan_update"));
-      assert.equal(harness.persistedState()?.phase, "discovering");
+test("the package exposes only its planning tools and /execute-plan command", async () => {
+  const { harness } = await bootstrap();
+  assert.deepEqual([...harness.tools.keys()].sort(), [
+    "plan_publish",
+    "plan_question",
+  ]);
+  assert.deepEqual([...harness.commands.keys()], ["execute-plan"]);
+  assert.equal(harness.commands.has("planning-approve"), false);
+  assert.equal(harness.commands.has("planning-cancel"), false);
 });
 
-test("planning blocks mutating and unknown tools through the tool_call gate", async () => {
-      const { harness } = await bootstrap();
-      await harness.emit("input", {
-            text: "/plan Add passkeys",
-            source: "interactive",
-      });
+test("plan_publish creates one validated HTML artifact and terminates planning", async () => {
+  const { cwd, harness } = await bootstrap();
+  const published = await harness.callTool("plan_publish", validDraft());
+  assert.equal(published.terminate, true);
+  assert.match(
+    published.content[0]!.text,
+    /Planning is complete; do not implement/i,
+  );
 
-      const blockedWrite = await harness.emit("tool_call", {
-            toolName: "write",
-            input: { path: "src/x.ts" },
-      });
-      assert.equal((blockedWrite as { block?: boolean })?.block, true);
+  const htmlPath = join(cwd, "docs/plan/add-passkey-authentication.html");
+  const html = await readFile(htmlPath, "utf8");
+  assert.match(html, /data-plan-format="pi-plan-html-v1"/);
+  assert.match(html, /Implementation subtasks/);
 
-      const blockedBash = await harness.emit("tool_call", {
-            toolName: "bash",
-            input: { command: "ls" },
-      });
-      assert.equal((blockedBash as { block?: boolean })?.block, true);
-
-      const allowedRead = await harness.emit("tool_call", {
-            toolName: "read",
-            input: { path: "README.md" },
-      });
-      assert.equal(allowedRead, undefined);
+  const invalid = validDraft();
+  invalid.tasks[0] = { ...invalid.tasks[0]!, subtasks: [] };
+  await assert.rejects(
+    () => harness.callTool("plan_publish", invalid),
+    /subtask/i,
+  );
 });
 
-test("publishing requires confirmed shared understanding and complete What/Why/How tasks", async () => {
-      const { cwd, harness } = await bootstrap();
-      await harness.emit("input", {
-            text: "/plan Add passkeys",
-            source: "interactive",
-      });
+test("plan_question delegates presentation to Pi's native select and input UI", async () => {
+  const { harness } = await bootstrap();
+  harness.queueSelect("Other answer…");
+  harness.queueInput("Use an account setting");
+  const answer = await harness.callTool("plan_question", {
+    question: "Where should the user enable passkeys?",
+    options: ["During sign in", "In account settings"],
+  });
+  assert.match(answer.content[0]!.text, /Use an account setting/);
 
-      await assert.rejects(
-            () => harness.callTool("plan_update", validDraft()),
-            /shared-understanding/i,
-      );
+  harness.queueSelect("Other answer…");
+  const literalOption = await harness.callTool("plan_question", {
+    question: "Should the literal option be preserved?",
+    options: ["Other answer…"],
+    allowFreeText: false,
+  });
+  assert.match(literalOption.content[0]!.text, /User selected: Other answer…/);
 
-      await reachDrafting(harness);
-      assert.equal(harness.persistedState()?.phase, "drafting");
-
-      const incomplete = validDraft();
-      incomplete.tasks[0] = { ...incomplete.tasks[0]!, how: "TBD" };
-      await assert.rejects(
-            () => harness.callTool("plan_update", incomplete),
-            /How detail/i,
-      );
-
-      const result = await harness.callTool("plan_update", validDraft());
-      assert.match(result.content[0]!.text, /Published plan revision 1/);
-      const html = await readFile(
-            join(cwd, "docs/plan/add-passkey-authentication.html"),
-            "utf8",
-      );
-      assert.match(html, /<dt>What<\/dt>/);
-      assert.equal(
-            harness.persistedState()?.artifact?.path,
-            "docs/plan/add-passkey-authentication.html",
-      );
+  const noUi = await bootstrap({ hasUI: false });
+  const unavailable = await noUi.harness.callTool("plan_question", {
+    question: "Which rollout should this plan use?",
+  });
+  assert.match(unavailable.content[0]!.text, /Interactive UI is unavailable/);
 });
 
-test("a no-UI session can plan but cannot approve or gain execution permissions", async () => {
-      const { harness } = await bootstrap({ hasUI: false });
-      await harness.emit("input", {
-            text: "/plan Add passkeys",
-            source: "interactive",
-      });
-      await assert.rejects(
-            () => harness.callTool("plan_ask_frontier", { nodeIds: ["x"] }),
-            /interactive or RPC UI/i,
-      );
-      assert.equal(harness.persistedState()?.phase, "discovering");
-      assert.equal(harness.activeTools.includes("edit"), false);
+test("/execute-plan extracts Markdown and starts implementation with subagent guidance", async () => {
+  const { cwd, harness } = await bootstrap();
+  await harness.callTool("plan_publish", validDraft());
+
+  await harness.runCommand(
+    "execute-plan",
+    "docs/plan/add-passkey-authentication.html",
+  );
+  const markdown = await readFile(
+    join(cwd, "docs/plan/add-passkey-authentication.md"),
+    "utf8",
+  );
+  assert.match(markdown, /# Add passkey authentication/);
+  assert.match(markdown, /#### Subtasks/);
+  assert.match(
+    harness.sentUserMessages.at(-1) ?? "",
+    /Use the active subagent tool only for dependency-independent/i,
+  );
+  assert.match(
+    harness.ctx.ui.notifications.at(-1)?.message ?? "",
+    /Extracted docs\/plan\/add-passkey-authentication.html/i,
+  );
 });
 
-test("approval is revision-bound and guarded execution restores the original tools", async () => {
-      const { harness } = await bootstrap();
-      await harness.emit("input", {
-            text: "/plan Add passkeys",
-            source: "interactive",
-      });
-      await reachDrafting(harness);
-      await harness.callTool("plan_update", validDraft());
-      const digest = harness.persistedState()?.candidate?.digest ?? "";
-
-      await harness.runCommand("planning-approve", "deadbeef guarded");
-      assert.match(
-            harness.ctx.ui.notifications.at(-1)?.message ?? "",
-            /does not match/i,
-      );
-      assert.equal(harness.persistedState()?.approval, undefined);
-
-      await harness.runCommand("planning-approve", `${digest} bogus-mode`);
-      assert.match(
-            harness.ctx.ui.notifications.at(-1)?.message ?? "",
-            /guarded, review, or fresh/i,
-      );
-      assert.equal(harness.persistedState()?.approval, undefined);
-
-      await harness.runCommand("planning-approve", `${digest} guarded`);
-      const approved = harness.persistedState();
-      assert.equal(approved?.phase, "executing");
-      assert.equal(approved?.approval?.candidateDigest, digest);
-      assert.ok(harness.activeTools.includes("edit"));
-      assert.ok(harness.activeTools.includes("plan_step_status"));
-});
-
-test("fresh approval remains locked until the child execution handoff", async () => {
-      const { harness } = await bootstrap();
-      await harness.emit("input", {
-            text: "/plan Add passkeys",
-            source: "interactive",
-      });
-      await reachDrafting(harness);
-      await harness.callTool("plan_update", validDraft());
-      await harness.runCommand(
-            "planning-approve",
-            `${harness.persistedState()?.candidate?.digest} fresh`,
-      );
-
-      assert.equal(harness.persistedState()?.phase, "approved");
-      assert.equal(harness.activeTools.includes("edit"), false);
-      const blocked = await harness.emit("tool_call", {
-            toolName: "edit",
-            input: { path: "src/auth/types.ts" },
-      });
-      assert.equal((blocked as { block?: boolean })?.block, true);
-
-      await harness.emit("session_start", { reason: "resume" });
-      assert.equal(harness.activeTools.includes("edit"), false);
-      assert.equal(harness.persistedState()?.phase, "approved");
-});
-
-test("guarded execution allows planned paths and gates out-of-plan mutation", async () => {
-      const { harness } = await bootstrap();
-      await harness.emit("input", {
-            text: "/plan Add passkeys",
-            source: "interactive",
-      });
-      await reachDrafting(harness);
-      await harness.callTool("plan_update", validDraft());
-      await harness.runCommand(
-            "planning-approve",
-            `${harness.persistedState()?.candidate?.digest} guarded`,
-      );
-
-      const planned = await harness.emit("tool_call", {
-            toolName: "edit",
-            input: { path: "src/auth/types.ts" },
-      });
-      assert.equal(planned, undefined);
-
-      harness.queueSelect("Block");
-      const outOfPlan = await harness.emit("tool_call", {
-            toolName: "edit",
-            input: { path: "src/unrelated.ts" },
-      });
-      assert.equal((outOfPlan as { block?: boolean })?.block, true);
-
-      // package.json is planned nowhere and is a dependency manifest: always ask.
-      harness.queueSelect("Block");
-      const manifest = await harness.emit("tool_call", {
-            toolName: "write",
-            input: { path: "package.json" },
-      });
-      assert.equal((manifest as { block?: boolean })?.block, true);
-});
-
-test("cancelling an inactive session leaves its tool set unchanged", async () => {
-      const { harness } = await bootstrap();
-      const before = [...harness.activeTools];
-      await harness.runCommand("planning-cancel");
-      assert.deepEqual(harness.activeTools, before);
-      assert.equal(harness.persistedState(), undefined);
-});
-
-test("session restore reapplies branch state and cancel restores the original tools", async () => {
-      const { harness } = await bootstrap();
-      await harness.emit("input", {
-            text: "/plan Add passkeys",
-            source: "interactive",
-      });
-      assert.equal(harness.activeTools.includes("edit"), false);
-
-      await harness.emit("session_start", { reason: "resume" });
-      assert.equal(harness.activeTools.includes("edit"), false);
-      assert.equal(harness.persistedState()?.phase, "discovering");
-
-      await harness.runCommand("planning-cancel");
-      assert.ok(harness.activeTools.includes("edit"));
-      assert.equal(harness.persistedState()?.phase, "cancelled");
+test("/execute-plan reports invalid input without starting an implementation turn", async () => {
+  const { harness } = await bootstrap();
+  await harness.runCommand("execute-plan", "missing.txt");
+  assert.equal(harness.sentUserMessages.length, 0);
+  assert.match(
+    harness.ctx.ui.notifications.at(-1)?.message ?? "",
+    /\.html extension/i,
+  );
 });

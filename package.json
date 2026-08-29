@@ -2,7 +2,7 @@
   "name": "pi-planning-html",
   "version": "0.2.0",
   "private": true,
-  "description": "A permission-backed, approval-gated HTML planning mode for Pi.",
+  "description": "A simple HTML planning and plan-execution package for Pi.",
   "type": "module",
   "repository": {
     "type": "git",

@@ -2,24 +2,30 @@
 
 ## Purpose
 
-This repository is a [Pi](https://pi.dev) package that provides a planning command named `/plan`. The command should help an agent inspect a task, clarify its scope, and produce an actionable implementation plan before making changes.
+This repository is a [Pi](https://pi.dev) package with two commands:
+
+- `/plan <request>` researches a request and generates a detailed HTML plan.
+- `/execute-plan <planning-file.html>` extracts the plan to Markdown and starts normal implementation work.
 
 ## Pi integration
 
 - Follow Pi's documented package conventions.
-- The `/plan` prompt template belongs in `prompts/` and must be declared by the `pi.prompts` manifest in `package.json`.
-- The permission boundary and lifecycle live in `extensions/planning/`; keep the extension declared by `pi.extensions` and included in published package files.
-- Keep the `/plan` workflow read-only by default. It must not modify project files, run destructive commands, or make commits unless the user explicitly asks. The sole default planning-time write is the renderer-owned HTML artifact under the configured plan directory.
-- Preserve user-provided constraints, surface assumptions and unresolved questions, and include validation steps in each plan.
-- Treat prompts as behavioral guidance and extension tool policy as enforcement; never describe the package as an OS sandbox.
-- Every planned implementation task must include detailed What, Why, How, affected files/modules, dependencies, and validation.
-- User-owned decisions must pass through the dependency-aware grilling frontier and explicit shared-understanding confirmation before review.
+- `/plan` is the `prompts/plan.md` prompt template and must be declared by `pi.prompts` in `package.json`.
+- `/execute-plan` and the planning tools live in `extensions/planning/`; keep the extension declared by `pi.extensions` and included in published package files.
+- `/plan` is planning-only. Its final action is `plan_publish`, which writes one renderer-owned HTML artifact under the configured plan directory. It must not implement the request.
+- `plan_question` must use Pi's native `ctx.ui.select()` and `ctx.ui.input()` APIs. Do not create custom question-rendering UI.
+- The package intentionally has no permission-control, approval, lifecycle, or task-progress machinery. Do not describe its prompt guidance as an OS sandbox or a mechanical permission boundary.
+- `/execute-plan` extracts the generated HTML's embedded Markdown to an adjacent `.md` file, then starts normal implementation. Use an active `subagent` tool only for independent, bounded tasks; the primary agent keeps integration and validation.
+- Every planned implementation task and subtask must include detailed What, Why, How, affected files/modules, dependencies, and validation. Plans must record the applicable engineering considerations, assumptions, risks, and end-to-end validation.
 
 ## Project structure
 
-- `prompts/plan.md` — model-facing planning and grilling contract.
-- `extensions/planning/` — lifecycle, policy, decisions, artifact, approval, and handoff modules.
-- `tests/` — Node test-runner coverage for pure modules and lifecycle invariants.
+- `prompts/plan.md` — model-facing planning-only contract.
+- `extensions/planning/index.ts` — Pi tools and `/execute-plan` command.
+- `extensions/planning/schema.ts` — plan, task, subtask, and engineering-coverage validation.
+- `extensions/planning/artifact.ts` — HTML rendering, contained writes, and embedded-Markdown extraction.
+- `extensions/planning/config.ts` — optional plan-directory setting.
+- `tests/` — Node test-runner coverage for artifacts, schema validation, and command wiring.
 
 ## Engineering guidelines
 

@@ -1,50 +1,21 @@
-export const PLANNING_TIERS = ["brief", "standard", "deep"] as const;
-export type PlanningTier = (typeof PLANNING_TIERS)[number];
+export const ENGINEERING_AREAS = [
+  "architecture",
+  "security",
+  "data-and-migrations",
+  "testing",
+  "rollout-and-rollback",
+  "observability",
+  "performance-and-accessibility",
+] as const;
 
-export interface DecisionOption {
-  id: string;
-  label: string;
-  description?: string | undefined;
-}
-
-export interface DecisionAnswer {
-  value: string;
-  label: string;
-  kind: "option" | "custom" | "assumption";
-  rationale?: string;
-  answeredAt: string;
-}
-
-export interface DecisionNode {
-  id: string;
-  question: string;
-  description?: string | undefined;
-  dependsOn: string[];
-  factsReady: boolean;
-  factEvidence: string[];
-  options: DecisionOption[];
-  recommendation: string;
-  recommendationRationale: string;
-  impact: string;
-  material: boolean;
-  answer?: DecisionAnswer | undefined;
-}
-
-export interface DecisionTree {
-  nodes: DecisionNode[];
-  sharedUnderstanding?: {
-    confirmedAt: string;
-    summary: string;
-    treeDigest: string;
-  };
-}
+export type EngineeringArea = (typeof ENGINEERING_AREAS)[number];
 
 export interface PlanFinding {
   summary: string;
   evidence: string[];
 }
 
-export interface PlanTask {
+export interface PlanSubtask {
   id: string;
   title: string;
   what: string;
@@ -53,6 +24,10 @@ export interface PlanTask {
   files: string[];
   dependsOn: string[];
   validation: string[];
+}
+
+export interface PlanTask extends PlanSubtask {
+  subtasks: PlanSubtask[];
 }
 
 export interface PlanRisk {
@@ -65,7 +40,6 @@ export interface PlanAssumption {
   assumption: string;
   confidence: "low" | "medium" | "high";
   impactIfFalse: string;
-  acknowledged: boolean;
 }
 
 export interface PlanOpenQuestion {
@@ -73,22 +47,15 @@ export interface PlanOpenQuestion {
   blocking: boolean;
 }
 
-export interface DeepPlanSection {
-  name:
-    | "architecture"
-    | "security"
-    | "migration"
-    | "rollout"
-    | "observability"
-    | "rollback";
-  content: string;
+export interface EngineeringConsideration {
+  area: EngineeringArea;
+  assessment: string;
 }
 
 export interface PlanDraft {
   title: string;
   slug: string;
-  tier: PlanningTier;
-  mainIdea: string;
+  summary: string;
   outcome: string;
   acceptanceCriteria: string[];
   inScope: string[];
@@ -100,7 +67,7 @@ export interface PlanDraft {
   risks: PlanRisk[];
   assumptions: PlanAssumption[];
   openQuestions: PlanOpenQuestion[];
-  deepSections: DeepPlanSection[];
+  engineering: EngineeringConsideration[];
 }
 
 export interface ValidationResult {
@@ -122,38 +89,66 @@ function unique(values: string[]): boolean {
   return new Set(values).size === values.length;
 }
 
-function validateTaskGraph(tasks: PlanTask[], errors: string[]): void {
-  const byId = new Map(tasks.map((task) => [task.id, task]));
+function validateWorkItem(
+  item: PlanSubtask,
+  knownIds: Set<string>,
+  errors: string[],
+  label: string,
+): void {
+  const id = item.id || "<missing-id>";
+  if (!ID_PATTERN.test(item.id))
+    errors.push(`${label} ${id} has an invalid stable ID.`);
+  if (!present(item.title, 4))
+    errors.push(`${label} ${id} needs a specific title.`);
+  if (!present(item.what, 12))
+    errors.push(`${label} ${id} must include concrete What detail.`);
+  if (!present(item.why, 12))
+    errors.push(`${label} ${id} must include concrete Why detail.`);
+  if (!present(item.how, 20))
+    errors.push(`${label} ${id} must include implementation-ready How detail.`);
+  if (item.files.length === 0 || item.files.some((path) => !present(path))) {
+    errors.push(`${label} ${id} must name affected files or modules.`);
+  }
+  if (
+    item.validation.length === 0 ||
+    item.validation.some((check) => !present(check, 8))
+  ) {
+    errors.push(`${label} ${id} needs at least one concrete validation check.`);
+  }
+  if (!unique(item.dependsOn))
+    errors.push(`${label} ${id} repeats a dependency.`);
+  for (const dependency of item.dependsOn) {
+    if (!knownIds.has(dependency)) {
+      errors.push(`${label} ${id} depends on unknown work item ${dependency}.`);
+    }
+    if (dependency === item.id)
+      errors.push(`${label} ${id} cannot depend on itself.`);
+  }
+}
+
+function validateDependencyCycles(
+  items: PlanSubtask[],
+  errors: string[],
+): void {
+  const byId = new Map(items.map((item) => [item.id, item]));
   const visiting = new Set<string>();
   const visited = new Set<string>();
-
-  for (const task of tasks) {
-    for (const dependency of task.dependsOn) {
-      if (!byId.has(dependency)) {
-        errors.push(`Task ${task.id} depends on unknown task ${dependency}.`);
-      }
-      if (dependency === task.id) {
-        errors.push(`Task ${task.id} cannot depend on itself.`);
-      }
-    }
-  }
 
   function visit(id: string): void {
     if (visited.has(id)) return;
     if (visiting.has(id)) {
-      errors.push(`Task dependency cycle includes ${id}.`);
+      errors.push(`Work-item dependency cycle includes ${id}.`);
       return;
     }
     visiting.add(id);
-    const task = byId.get(id);
-    for (const dependency of task?.dependsOn ?? []) {
+    for (const dependency of byId.get(id)?.dependsOn ?? []) {
       if (byId.has(dependency)) visit(dependency);
     }
     visiting.delete(id);
     visited.add(id);
   }
 
-  for (const task of tasks) visit(task.id);
+  for (const item of items) visit(item.id);
 }
 
 export function validatePlanDraft(draft: PlanDraft): ValidationResult {
@@ -162,10 +157,8 @@ export function validatePlanDraft(draft: PlanDraft): ValidationResult {
   if (!present(draft.title, 4)) errors.push("Plan title must be specific.");
   if (!SLUG_PATTERN.test(draft.slug))
     errors.push("Plan slug must be lowercase kebab-case.");
-  if (!PLANNING_TIERS.includes(draft.tier))
-    errors.push("Plan tier is invalid.");
-  if (!present(draft.mainIdea, 12))
-    errors.push("Main idea must state the decision or approach.");
+  if (!present(draft.summary, 12))
+    errors.push("Plan summary must explain the approach.");
   if (!present(draft.outcome, 12))
     errors.push("Outcome must describe observable target behavior.");
   if (
@@ -174,79 +167,65 @@ export function validatePlanDraft(draft: PlanDraft): ValidationResult {
   ) {
     errors.push("At least one concrete acceptance criterion is required.");
   }
+  if (
+    draft.inScope.length === 0 ||
+    draft.inScope.some((item) => !present(item, 4))
+  ) {
+    errors.push("The plan must state concrete in-scope work.");
+  }
   if (draft.tasks.length === 0)
     errors.push("At least one implementation task is required.");
-  if (!unique(draft.tasks.map((task) => task.id)))
-    errors.push("Task IDs must be unique.");
+
+  const workItems = draft.tasks.flatMap((task) => [task, ...task.subtasks]);
+  const ids = workItems.map((item) => item.id);
+  const knownIds = new Set(ids);
+  if (!unique(ids))
+    errors.push("Task and subtask IDs must be unique across the plan.");
 
   for (const task of draft.tasks) {
-    const label = task.id || "<missing-id>";
-    if (!ID_PATTERN.test(task.id))
-      errors.push(`Task ${label} has an invalid stable ID.`);
-    if (!present(task.title, 4))
-      errors.push(`Task ${label} needs a specific title.`);
-    if (!present(task.what, 12))
-      errors.push(`Task ${label} must include concrete What detail.`);
-    if (!present(task.why, 12))
-      errors.push(`Task ${label} must include concrete Why detail.`);
-    if (!present(task.how, 20))
+    validateWorkItem(task, knownIds, errors, "Task");
+    if (task.subtasks.length === 0) {
       errors.push(
-        `Task ${label} must include implementation-ready How detail.`,
-      );
-    if (task.files.length === 0)
-      errors.push(
-        `Task ${label} must name at least one affected file or module.`,
-      );
-    if (task.files.some((path) => !present(path)))
-      errors.push(`Task ${label} contains an empty file path.`);
-    if (
-      task.validation.length === 0 ||
-      task.validation.some((item) => !present(item, 8))
-    ) {
-      errors.push(
-        `Task ${label} needs at least one concrete validation check.`,
+        `Task ${task.id || "<missing-id>"} must include at least one implementation subtask.`,
       );
     }
-    if (!unique(task.dependsOn))
-      errors.push(`Task ${label} repeats a dependency.`);
+    for (const subtask of task.subtasks) {
+      validateWorkItem(subtask, knownIds, errors, "Subtask");
+    }
   }
+  validateDependencyCycles(workItems, errors);
 
-  validateTaskGraph(draft.tasks, errors);
-
-  if (draft.openQuestions.some((item) => item.blocking)) {
-    errors.push("Blocking open questions must be resolved before review.");
-  }
-  for (const assumption of draft.assumptions) {
-    if (!assumption.acknowledged) {
-      errors.push(`Assumption must be acknowledged: ${assumption.assumption}`);
-    }
-    if (!present(assumption.impactIfFalse, 8)) {
-      errors.push(
-        `Assumption needs impact-if-false detail: ${assumption.assumption}`,
-      );
-    }
-  }
-  for (const risk of draft.risks) {
-    if (!present(risk.risk, 8) || !present(risk.mitigation, 8)) {
-      errors.push("Each risk needs a concrete description and mitigation.");
-    }
-  }
   if (
     draft.validation.length === 0 ||
     draft.validation.some((item) => !present(item, 8))
   ) {
     errors.push("The plan needs an end-to-end validation strategy.");
   }
+  if (draft.openQuestions.some((item) => item.blocking)) {
+    errors.push("Blocking open questions must be resolved before publishing.");
+  }
+  for (const risk of draft.risks) {
+    if (!present(risk.risk, 8) || !present(risk.mitigation, 8)) {
+      errors.push("Each risk needs a concrete description and mitigation.");
+    }
+  }
+  for (const assumption of draft.assumptions) {
+    if (
+      !present(assumption.assumption, 8) ||
+      !present(assumption.impactIfFalse, 8)
+    ) {
+      errors.push("Each assumption needs its impact if false.");
+    }
+  }
 
-  if (draft.tier === "deep") {
-    const required = ["architecture", "rollout", "rollback"] as const;
-    const byName = new Map(
-      draft.deepSections.map((section) => [section.name, section.content]),
-    );
-    for (const name of required) {
-      if (!present(byName.get(name) ?? "", 12)) {
-        errors.push(`Deep plans require a substantive ${name} section.`);
-      }
+  const areas = draft.engineering.map((item) => item.area);
+  if (!unique(areas))
+    errors.push("Engineering considerations must not repeat an area.");
+  for (const area of ENGINEERING_AREAS) {
+    const assessment =
+      draft.engineering.find((item) => item.area === area)?.assessment ?? "";
+    if (!present(assessment, 12)) {
+      errors.push(`Engineering consideration is required for ${area}.`);
     }
   }
 
@@ -257,6 +236,7 @@ export function plannedPaths(draft: PlanDraft): string[] {
   return [
     ...new Set(
       draft.tasks
+        .flatMap((task) => [task, ...task.subtasks])
         .flatMap((task) => task.files)
         .map((path) => path.trim())
         .filter(Boolean),

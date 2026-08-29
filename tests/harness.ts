@@ -1,272 +1,124 @@
-import {
-  PLANNING_STATE_ENTRY,
-  restorePlanningState,
-  type PlanningState,
-} from "../extensions/planning/state.ts";
-
-export type ToolParams = Record<string, unknown> | object;
-
-export interface FakeToolDefinition {
-  name: string;
-  execute: (
-    id: string,
-    params: ToolParams,
-    signal: undefined,
-    onUpdate: undefined,
-    ctx: FakeContext,
-  ) => Promise<{
-    content: Array<{ type: "text"; text: string }>;
-    details?: unknown;
-  }>;
-}
+type ToolResult = {
+  content: Array<{ type: "text"; text: string }>;
+  details?: unknown;
+  terminate?: boolean;
+};
 
 export interface FakeContext {
   cwd: string;
   hasUI: boolean;
   mode: string;
-  ui: FakeUi;
-  sessionManager: FakeSessionManager;
-  isProjectTrusted: () => boolean;
-  newSession: (_options: unknown) => Promise<{ cancelled: boolean }>;
-}
-
-interface FakeUi {
-  select: (title: string, options: string[]) => Promise<string | undefined>;
-  confirm: (title: string, body: string) => Promise<boolean>;
-  input: (title: string, placeholder?: string) => Promise<string | undefined>;
-  editor: (title: string, value: string) => Promise<string | undefined>;
-  notify: (message: string, level?: string) => void;
-  setStatus: (key: string, value?: string) => void;
-  setWidget: (key: string, value?: unknown) => void;
-  notifications: Array<{ message: string; level: string }>;
-}
-
-interface SessionEntry {
-  type: "custom";
-  customType: string;
-  data: unknown;
-}
-
-class FakeSessionManager {
-  private entries: SessionEntry[] = [];
-
-  getBranch(): SessionEntry[] {
-    return [...this.entries];
-  }
-
-  getEntries(): SessionEntry[] {
-    return [...this.entries];
-  }
-
-  getLeafId(): string | null {
-    return this.entries.length > 0 ? `leaf-${this.entries.length}` : null;
-  }
-
-  getSessionId(): string {
-    return "session-under-test";
-  }
-
-  getSessionFile(): string | undefined {
-    return "/tmp/session-under-test.jsonl";
-  }
-
-  append(customType: string, data: unknown): void {
-    // Persisted state must survive JSON serialization exactly as Pi stores it.
-    this.entries.push({
-      type: "custom",
-      customType,
-      data: JSON.parse(JSON.stringify(data)),
-    });
-  }
+  ui: {
+    select: (title: string, options: string[]) => Promise<string | undefined>;
+    input: (title: string, placeholder?: string) => Promise<string | undefined>;
+    notify: (message: string, level?: string) => void;
+    notifications: Array<{ message: string; level: string }>;
+  };
 }
 
 export interface Harness {
-  tools: Map<string, FakeToolDefinition>;
-  commands: Map<string, (args: string, ctx: FakeContext) => Promise<void>>;
-  handlers: Map<
+  tools: Map<
     string,
-    Array<(event: unknown, ctx: FakeContext) => Promise<unknown>>
+    {
+      execute: (
+        _id: string,
+        params: object,
+        signal: undefined,
+        update: undefined,
+        ctx: FakeContext,
+      ) => Promise<ToolResult>;
+    }
   >;
+  commands: Map<string, (args: string, ctx: FakeContext) => Promise<void>>;
   ctx: FakeContext;
-  session: FakeSessionManager;
   activeTools: string[];
-  allTools: Array<{
-    name: string;
-    description: string;
-    sourceInfo: { source: string; path: string };
-  }>;
   sentUserMessages: string[];
-  callTool: (
-    name: string,
-    params: ToolParams,
-  ) => Promise<{
-    content: Array<{ type: "text"; text: string }>;
-    details?: unknown;
-  }>;
-  emit: (event: string, payload: Record<string, unknown>) => Promise<unknown>;
+  callTool: (name: string, params: object) => Promise<ToolResult>;
   runCommand: (name: string, args?: string) => Promise<void>;
-  persistedState: () => PlanningState | undefined;
   queueSelect: (...answers: Array<string | undefined>) => void;
-  queueConfirm: (...answers: boolean[]) => void;
   queueInput: (...answers: Array<string | undefined>) => void;
 }
 
-export interface HarnessOptions {
-  cwd: string;
-  hasUI?: boolean;
-  extensionPath: string;
-  builtinTools?: string[];
-}
-
-/**
- * Minimal in-memory ExtensionAPI/ExtensionContext stand-in that exercises the real
- * extension wiring: tool registration, tool_call gating, commands, and session state.
- */
-export function createHarness(options: HarnessOptions): {
+export function createHarness(options: { cwd: string; hasUI?: boolean }): {
   pi: unknown;
   harness: Harness;
 } {
   const selects: Array<string | undefined> = [];
-  const confirms: boolean[] = [];
   const inputs: Array<string | undefined> = [];
-  const session = new FakeSessionManager();
-
-  const ui: FakeUi = {
-    notifications: [],
-    select: async () => (selects.length > 0 ? selects.shift() : undefined),
-    confirm: async () =>
-      confirms.length > 0 ? Boolean(confirms.shift()) : false,
-    input: async () => (inputs.length > 0 ? inputs.shift() : undefined),
-    editor: async () => (inputs.length > 0 ? inputs.shift() : undefined),
-    notify: (message, level = "info") => {
-      ui.notifications.push({ message, level });
-    },
-    setStatus: () => {},
-    setWidget: () => {},
+  const ui = {
+    notifications: [] as Array<{ message: string; level: string }>,
+    select: async () => selects.shift(),
+    input: async () => inputs.shift(),
+    notify: (message: string, level = "info") =>
+      ui.notifications.push({ message, level }),
   };
-
   const ctx: FakeContext = {
     cwd: options.cwd,
     hasUI: options.hasUI ?? true,
     mode: options.hasUI === false ? "print" : "tui",
     ui,
-    sessionManager: session,
-    isProjectTrusted: () => true,
-    // Fresh-session setup is covered by state/tool gating here; the harness deliberately
-    // reports cancellation rather than pretending to emulate Pi's nested session runtime.
-    newSession: async () => ({ cancelled: true }),
   };
+  const tools = new Map<
+    string,
+    Harness["tools"] extends Map<string, infer Tool> ? Tool : never
+  >();
+  const commands = new Map<
+    string,
+    (args: string, context: FakeContext) => Promise<void>
+  >();
+  const activeTools = ["read", "bash", "edit", "write", "subagent"];
+  const sentUserMessages: string[] = [];
 
   const harness: Harness = {
-    tools: new Map(),
-    commands: new Map(),
-    handlers: new Map(),
+    tools,
+    commands,
     ctx,
-    session,
-    activeTools: [
-      ...(options.builtinTools ?? [
-        "read",
-        "bash",
-        "edit",
-        "write",
-        "grep",
-        "find",
-        "ls",
-      ]),
-    ],
-    allTools: (
-      options.builtinTools ?? [
-        "read",
-        "bash",
-        "edit",
-        "write",
-        "grep",
-        "find",
-        "ls",
-      ]
-    ).map((name) => ({
-      name,
-      description: name,
-      sourceInfo: { source: "builtin", path: `<builtin:${name}>` },
-    })),
-    sentUserMessages: [],
+    activeTools,
+    sentUserMessages,
     callTool: async (name, params) => {
-      const tool = harness.tools.get(name);
+      const tool = tools.get(name);
       if (!tool) throw new Error(`Tool not registered: ${name}`);
       return tool.execute("call-1", params, undefined, undefined, ctx);
     },
-    emit: async (event, payload) => {
-      let result: unknown;
-      for (const handler of harness.handlers.get(event) ?? []) {
-        result = (await handler(payload, ctx)) ?? result;
-      }
-      return result;
-    },
     runCommand: async (name, args = "") => {
-      const command = harness.commands.get(name);
+      const command = commands.get(name);
       if (!command) throw new Error(`Command not registered: ${name}`);
       await command(args, ctx);
     },
-    persistedState: () => {
-      const entries = session
-        .getBranch()
-        .filter((entry) => entry.customType === PLANNING_STATE_ENTRY);
-      const latest = entries[entries.length - 1];
-      return latest ? restorePlanningState(latest.data) : undefined;
-    },
     queueSelect: (...answers) => selects.push(...answers),
-    queueConfirm: (...answers) => confirms.push(...answers),
     queueInput: (...answers) => inputs.push(...answers),
   };
 
   const pi = {
-    registerTool(definition: FakeToolDefinition & { name: string }) {
-      harness.tools.set(definition.name, definition);
-      if (!harness.allTools.some((tool) => tool.name === definition.name)) {
-        harness.allTools.push({
-          name: definition.name,
-          description: definition.name,
-          sourceInfo: { source: "cli", path: options.extensionPath },
-        });
-      }
+    registerTool(definition: {
+      name: string;
+      execute: Harness["tools"] extends Map<string, infer Tool>
+        ? Tool extends { execute: infer Execute }
+          ? Execute
+          : never
+        : never;
+    }) {
+      tools.set(definition.name, definition as never);
     },
     registerCommand(
       name: string,
       definition: {
-        handler: (args: string, ctx: FakeContext) => Promise<void>;
+        handler: (args: string, context: FakeContext) => Promise<void>;
       },
     ) {
-      harness.commands.set(name, definition.handler);
+      commands.set(name, definition.handler);
     },
-    registerShortcut() {},
-    registerFlag() {},
-    getFlag: () => undefined,
-    on(
-      event: string,
-      handler: (event: unknown, ctx: FakeContext) => Promise<unknown>,
-    ) {
-      const existing = harness.handlers.get(event) ?? [];
-      existing.push(handler);
-      harness.handlers.set(event, existing);
-    },
-    getActiveTools: () => [...harness.activeTools],
-    getAllTools: () => harness.allTools.map((tool) => ({ ...tool })),
+    getActiveTools: () => [...activeTools],
+    getAllTools: () =>
+      activeTools.map((name) => ({
+        name,
+        description: name,
+        sourceInfo: { source: "builtin", path: `<${name}>` },
+      })),
     setActiveTools: (names: string[]) => {
-      harness.activeTools = [...names];
+      activeTools.splice(0, activeTools.length, ...names);
     },
-    appendEntry: (customType: string, data: unknown) =>
-      session.append(customType, data),
-    sendMessage: () => {},
-    sendUserMessage: (content: string) => {
-      harness.sentUserMessages.push(content);
-    },
-    exec: async (command: string, args: string[]) => ({
-      stdout: command === "git" && args[0] === "rev-parse" ? "abc123" : "",
-      stderr: "",
-      code: 0,
-      killed: false,
-    }),
-    events: { on() {}, emit() {} },
+    sendUserMessage: (content: string) => sentUserMessages.push(content),
   };
 
   return { pi, harness };
