@@ -142,4 +142,3 @@ Run all checks with:
 ```bash
 npm run check
 ```
-
