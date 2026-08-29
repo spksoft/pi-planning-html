@@ -1,8 +1,17 @@
 {
   "name": "pi-planning-html",
   "version": "0.2.0",
+  "private": true,
   "description": "A permission-backed, approval-gated HTML planning mode for Pi.",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/spksoft/pi-planning-html.git"
+  },
+  "bugs": {
+    "url": "https://github.com/spksoft/pi-planning-html/issues"
+  },
+  "homepage": "https://github.com/spksoft/pi-planning-html#readme",
   "keywords": [
     "pi-package",
     "pi",

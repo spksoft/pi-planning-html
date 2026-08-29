@@ -1,4 +1,4 @@
-# pi-planning-html
+# Pi Planning HTML
 
 A [Pi](https://pi.dev) package that provides `/plan`: a permission-backed, decision-grilling planning mode with revisioned HTML artifacts and explicit approval before implementation.
 
@@ -17,23 +17,19 @@ A [Pi](https://pi.dev) package that provides `/plan`: a permission-backed, decis
 
 ## Install
 
-From a local checkout:
+This package is distributed from GitHub, not npm:
 
 ```bash
-pi install /absolute/path/to/pi-planning-html
+pi install git:github.com/spksoft/pi-planning-html
 ```
 
-After publishing:
+For a reproducible installation, pin a tag or commit:
 
 ```bash
-pi install npm:pi-planning-html
+pi install git:github.com/spksoft/pi-planning-html@<tag-or-commit>
 ```
 
-Or from a tagged Git revision:
-
-```bash
-pi install git:github.com/<owner>/pi-planning-html@<tag>
-```
+Use `pi update --extensions` to reconcile an unpinned Git installation.
 
 ## Use
 
