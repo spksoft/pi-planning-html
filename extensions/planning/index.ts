@@ -56,6 +56,10 @@ const PlanDraftSchema = Type.Object({
       evidence: Type.Array(Type.String()),
     }),
   ),
+  architecture: Type.Object({
+    summary: Type.String({ minLength: 1 }),
+    diagram: Type.String({ minLength: 1 }),
+  }),
   tasks: Type.Array(PlanTaskSchema, { minItems: 1 }),
   validation: Type.Array(Type.String(), { minItems: 1 }),
   risks: Type.Array(

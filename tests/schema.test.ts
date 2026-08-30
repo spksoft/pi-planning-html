@@ -33,6 +33,35 @@ test("every task and subtask requires concrete What, Why, How, files, and valida
   }
 });
 
+test("architecture design requires a summary and Mermaid flowchart", () => {
+  const missingSummary = validDraft({
+    architecture: { ...validDraft().architecture, summary: "TBD" },
+  });
+  assert.match(
+    validatePlanDraft(missingSummary).errors.join("\n"),
+    /Architecture design summary/i,
+  );
+
+  const missingDiagram = validDraft({
+    architecture: { ...validDraft().architecture, diagram: "" },
+  });
+  assert.match(
+    validatePlanDraft(missingDiagram).errors.join("\n"),
+    /Architecture diagram/i,
+  );
+
+  const unsupportedDiagram = validDraft({
+    architecture: {
+      ...validDraft().architecture,
+      diagram: "sequenceDiagram\n  Browser->>Service: Sign in request",
+    },
+  });
+  assert.match(
+    validatePlanDraft(unsupportedDiagram).errors.join("\n"),
+    /Mermaid flowchart/i,
+  );
+});
+
 test("subtasks, global dependency IDs, and engineering coverage are required", () => {
   const missingSubtask = validDraft();
   missingSubtask.tasks[0] = { ...missingSubtask.tasks[0]!, subtasks: [] };

@@ -11,6 +11,10 @@ import {
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import type { PlanDraft, PlanSubtask, PlanTask } from "./schema.ts";
 
+const MERMAID_CDN_URL =
+  "https://cdn.jsdelivr.net/npm/mermaid@11.17.2/dist/mermaid.esm.min.mjs";
+const ARCHITECTURE_DIAGRAM_SELECTOR = "#architecture-diagram";
+
 export interface PlanCandidate {
   digest: string;
   createdAt: string;
@@ -120,6 +124,15 @@ function taskCards(tasks: PlanTask[]): string {
     .join("");
 }
 
+function fencedCodeBlock(language: string, value: string): string[] {
+  const longestBacktickRun = Math.max(
+    0,
+    ...(value.match(/`+/g)?.map((run) => run.length) ?? []),
+  );
+  const fence = "`".repeat(Math.max(3, longestBacktickRun + 1));
+  return [`${fence}${language}`, value, fence];
+}
+
 export function renderPlanMarkdown(candidate: PlanCandidate): string {
   const { draft } = candidate;
   const lines = [
@@ -154,6 +167,12 @@ export function renderPlanMarkdown(candidate: PlanCandidate): string {
       `- **${finding.summary}**`,
       ...finding.evidence.map((item) => `  - ${item}`),
     ]),
+    "",
+    "## Architecture design",
+    "",
+    draft.architecture.summary,
+    "",
+    ...fencedCodeBlock("mermaid", draft.architecture.diagram),
     "",
     "## Implementation tasks",
     ...draft.tasks.flatMap((task) => [
@@ -264,7 +283,7 @@ export function renderPlanHtml(candidate: PlanCandidate): string {
   <meta name="plan-digest" content="${candidate.digest}">
   <title>${escapeHtml(draft.title)} — Implementation Plan</title>
   <style>
-    :root{color-scheme:light;--bg:#f5f7fb;--surface:#fff;--ink:#182235;--muted:#647087;--line:#dbe2ec;--brand:#4b3bc8;--soft:#efedff;--good:#08744b;--good-bg:#e8f7ef;--warn:#8a5900;--warn-bg:#fff3d7;--bad:#a12b34;--bad-bg:#fff0f1}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.62 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}.shell{width:min(1040px,calc(100% - 2rem));margin:auto}header{padding:4rem 0 2.6rem;border-bottom:1px solid var(--line);background:linear-gradient(135deg,#fff,#f0eeff)}main{padding:2.5rem 0 4rem}section{margin:0 0 3rem}h1{max-width:850px;margin:.2rem 0;font-size:clamp(2.2rem,6vw,4.2rem);line-height:1.05;letter-spacing:-.05em}h2{margin:0 0 1rem;font-size:1.75rem;letter-spacing:-.03em}h3{margin:.1rem 0 .5rem;line-height:1.25}h4{margin:1.2rem 0 .4rem}h5{margin:.8rem 0 .25rem}.eyebrow,.task-id{margin:0;color:var(--brand);font-size:.75rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.lede{max-width:780px;color:var(--muted);font-size:1.1rem}.meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem}.tag{display:inline-block;padding:.15rem .5rem;border-radius:99px;background:var(--soft);color:var(--brand);font-size:.72rem;font-weight:800}.tag.good{background:var(--good-bg);color:var(--good)}.tag.warn{background:var(--warn-bg);color:var(--warn)}.tag.bad{background:var(--bad-bg);color:var(--bad)}.main-idea{padding:1.2rem 1.3rem;border:1px solid #d1cbff;border-left:5px solid var(--brand);border-radius:14px;background:var(--soft)}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}.card,.task,.subtasks article{padding:1.15rem;border:1px solid var(--line);border-radius:15px;background:var(--surface)}.task{margin-bottom:1rem;border-left:5px solid var(--brand)}.task-head{display:flex;gap:.8rem;align-items:flex-start}.step{display:grid;min-width:2rem;height:2rem;place-items:center;border-radius:50%;background:var(--soft);color:var(--brand);font-weight:800}dl{display:grid;grid-template-columns:5rem 1fr;gap:.5rem 1rem;margin:1rem 0}dt{color:var(--brand);font-weight:850}dd{margin:0}.muted,small{color:var(--muted)}.subtasks{display:grid;gap:1rem;padding-left:1.5rem}.subtasks li{padding-left:.25rem}table{width:100%;border-collapse:collapse;background:var(--surface)}th,td{padding:.75rem;border:1px solid var(--line);vertical-align:top;text-align:left}th{background:#f0f3f8;font-size:.75rem;text-transform:uppercase}code{padding:.1rem .3rem;border-radius:5px;background:#eef1f6}footer{padding:1.5rem 0;border-top:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:.82rem}@media(max-width:700px){.grid{grid-template-columns:1fr}dl{grid-template-columns:1fr}header{padding-top:2.5rem}}@media print{body{background:#fff}.card,.task,.subtasks article{break-inside:avoid}}
+    :root{color-scheme:light;--bg:#f5f7fb;--surface:#fff;--ink:#182235;--muted:#647087;--line:#dbe2ec;--brand:#4b3bc8;--soft:#efedff;--good:#08744b;--good-bg:#e8f7ef;--warn:#8a5900;--warn-bg:#fff3d7;--bad:#a12b34;--bad-bg:#fff0f1}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.62 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}.shell{width:min(1040px,calc(100% - 2rem));margin:auto}header{padding:4rem 0 2.6rem;border-bottom:1px solid var(--line);background:linear-gradient(135deg,#fff,#f0eeff)}main{padding:2.5rem 0 4rem}section{margin:0 0 3rem}h1{max-width:850px;margin:.2rem 0;font-size:clamp(2.2rem,6vw,4.2rem);line-height:1.05;letter-spacing:-.05em}h2{margin:0 0 1rem;font-size:1.75rem;letter-spacing:-.03em}h3{margin:.1rem 0 .5rem;line-height:1.25}h4{margin:1.2rem 0 .4rem}h5{margin:.8rem 0 .25rem}.eyebrow,.task-id{margin:0;color:var(--brand);font-size:.75rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.lede{max-width:780px;color:var(--muted);font-size:1.1rem}.meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem}.tag{display:inline-block;padding:.15rem .5rem;border-radius:99px;background:var(--soft);color:var(--brand);font-size:.72rem;font-weight:800}.tag.good{background:var(--good-bg);color:var(--good)}.tag.warn{background:var(--warn-bg);color:var(--warn)}.tag.bad{background:var(--bad-bg);color:var(--bad)}.main-idea{padding:1.2rem 1.3rem;border:1px solid #d1cbff;border-left:5px solid var(--brand);border-radius:14px;background:var(--soft)}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}.card,.task,.subtasks article{padding:1.15rem;border:1px solid var(--line);border-radius:15px;background:var(--surface)}.task{margin-bottom:1rem;border-left:5px solid var(--brand)}.task-head{display:flex;gap:.8rem;align-items:flex-start}.step{display:grid;min-width:2rem;height:2rem;place-items:center;border-radius:50%;background:var(--soft);color:var(--brand);font-weight:800}dl{display:grid;grid-template-columns:5rem 1fr;gap:.5rem 1rem;margin:1rem 0}dt{color:var(--brand);font-weight:850}dd{margin:0}.architecture-figure{margin:1rem 0 0;padding:1rem;border:1px solid var(--line);border-radius:15px;background:#f9faff;overflow:auto}.architecture-figure figcaption{margin-bottom:.75rem;color:var(--muted);font-size:.85rem;font-weight:800}.architecture-diagram{margin:0;white-space:pre;overflow:auto}.architecture-diagram svg{display:block;max-width:100%;height:auto;margin:auto;white-space:normal}.muted,small{color:var(--muted)}.subtasks{display:grid;gap:1rem;padding-left:1.5rem}.subtasks li{padding-left:.25rem}table{width:100%;border-collapse:collapse;background:var(--surface)}th,td{padding:.75rem;border:1px solid var(--line);vertical-align:top;text-align:left}th{background:#f0f3f8;font-size:.75rem;text-transform:uppercase}code{padding:.1rem .3rem;border-radius:5px;background:#eef1f6}footer{padding:1.5rem 0;border-top:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:.82rem}@media(max-width:700px){.grid{grid-template-columns:1fr}dl{grid-template-columns:1fr}header{padding-top:2.5rem}}@media print{body{background:#fff}.card,.task,.subtasks article,.architecture-figure{break-inside:avoid}}
   </style>
 </head>
 <body>
@@ -273,6 +292,7 @@ export function renderPlanHtml(candidate: PlanCandidate): string {
   <section><div class="main-idea"><h2>Outcome</h2><p>${escapeHtml(draft.outcome)}</p><h3>Acceptance criteria</h3>${list(draft.acceptanceCriteria)}</div></section>
   <section><h2>Scope and constraints</h2><div class="grid"><article class="card"><h3>In scope</h3>${list(draft.inScope)}</article><article class="card"><h3>Out of scope</h3>${list(draft.outOfScope)}</article></div><article class="card" style="margin-top:1rem"><h3>Constraints</h3>${list(draft.constraints)}</article></section>
   <section><h2>Research findings</h2><div class="grid">${findings || '<p class="muted">No additional findings recorded.</p>'}</div></section>
+  <section><h2>Architecture design</h2><article class="card"><p>${escapeHtml(draft.architecture.summary)}</p><figure class="architecture-figure"><figcaption>Architecture flowchart</figcaption><pre id="architecture-diagram" class="mermaid architecture-diagram">${escapeHtml(draft.architecture.diagram)}</pre></figure></article></section>
   <section><h2>Implementation tasks</h2>${taskCards(draft.tasks)}</section>
   <section><h2>Engineering considerations</h2><div class="grid">${engineering}</div></section>
   <section><h2>Risks</h2>${risks ? `<table><thead><tr><th>Severity</th><th>Risk</th><th>Mitigation</th></tr></thead><tbody>${risks}</tbody></table>` : '<p class="muted">No material risks recorded.</p>'}</section>
@@ -282,6 +302,21 @@ export function renderPlanHtml(candidate: PlanCandidate): string {
 </main>
 <template id="pi-plan-markdown" data-format="markdown-v1">${escapeHtml(markdown)}</template>
 <footer><div class="shell">Generated by Pi Planning HTML. Run <code>/execute-plan &lt;this-file&gt;</code> to extract its Markdown and begin implementation.</div></footer>
+<script type="module">
+  import mermaid from "${MERMAID_CDN_URL}";
+
+  try {
+    mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: "strict",
+      flowchart: { htmlLabels: false },
+      secure: ["securityLevel", "startOnLoad", "maxTextSize"],
+    });
+    await mermaid.run({ querySelector: "${ARCHITECTURE_DIAGRAM_SELECTOR}" });
+  } catch {
+    // Leave the escaped Mermaid source visible when rendering is unavailable.
+  }
+</script>
 </body>
 </html>`;
 }

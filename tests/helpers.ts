@@ -26,6 +26,14 @@ export function validDraft(overrides: Partial<PlanDraft> = {}): PlanDraft {
         evidence: ["src/auth/service.ts:AuthService.createSession"],
       },
     ],
+    architecture: {
+      summary:
+        "The browser sends credentials to the authentication route, which delegates verification and session issuance to the existing service boundary.",
+      diagram: `flowchart LR
+  Browser[Browser] --> Route[Authentication route]
+  Route --> Service[Authentication service]
+  Service --> Session[Session issuance]`,
+    },
     tasks: [
       {
         id: "extend-credential-contract",

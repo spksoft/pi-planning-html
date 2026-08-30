@@ -52,6 +52,11 @@ export interface EngineeringConsideration {
   assessment: string;
 }
 
+export interface ArchitectureDesign {
+  summary: string;
+  diagram: string;
+}
+
 export interface PlanDraft {
   title: string;
   slug: string;
@@ -62,6 +67,7 @@ export interface PlanDraft {
   outOfScope: string[];
   constraints: string[];
   findings: PlanFinding[];
+  architecture: ArchitectureDesign;
   tasks: PlanTask[];
   validation: string[];
   risks: PlanRisk[];
@@ -79,6 +85,7 @@ const ID_PATTERN = /^[a-zA-Z][a-zA-Z0-9_-]*$/;
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const PLACEHOLDER_PATTERN =
   /^(?:tbd|todo|n\/?a|none|same as above|update (?:the )?code|implement (?:the )?(?:change|feature)|fix (?:the )?(?:issue|bug)|do it)[.!]?$/i;
+const FLOWCHART_PATTERN = /^(?:flowchart|graph)\s+(?:TB|TD|BT|RL|LR)\b/i;
 
 function present(value: string, minimum = 1): boolean {
   const trimmed = value.trim();
@@ -175,6 +182,19 @@ export function validatePlanDraft(draft: PlanDraft): ValidationResult {
   }
   if (draft.tasks.length === 0)
     errors.push("At least one implementation task is required.");
+  if (!present(draft.architecture.summary, 20)) {
+    errors.push(
+      "Architecture design summary must explain component boundaries and flows.",
+    );
+  }
+  if (
+    !present(draft.architecture.diagram, 20) ||
+    !FLOWCHART_PATTERN.test(draft.architecture.diagram.trim())
+  ) {
+    errors.push(
+      "Architecture diagram must be a Mermaid flowchart with a direction such as flowchart LR.",
+    );
+  }
 
   const workItems = draft.tasks.flatMap((task) => [task, ...task.subtasks]);
   const ids = workItems.map((item) => item.id);

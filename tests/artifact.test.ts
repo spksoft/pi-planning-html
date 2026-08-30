@@ -24,23 +24,49 @@ test("candidate digest is deterministic across object key order", () => {
   assert.equal(first.digest, second.digest);
 });
 
-test("HTML is standalone, escaped, and round-trips its canonical Markdown", () => {
+test("HTML securely renders architecture Mermaid source and round-trips canonical Markdown", () => {
   const draft = validDraft({
     title: "Auth <script>alert(1)</script> </template>",
+    architecture: {
+      summary:
+        "The architecture <script>alert(1)</script> keeps browser requests inside the authentication service boundary.",
+      diagram: `flowchart LR
+  Browser["<script>alert(1)</script>"] --> Service[Authentication service]`,
+    },
   });
   const candidate = createCandidate(draft, "2026-08-28T00:00:00.000Z");
+  const markdown = renderPlanMarkdown(candidate);
   const html = renderPlanHtml(candidate);
-  assert.doesNotMatch(html, /<script>/i);
+  assert.doesNotMatch(html, /<script>alert\(1\)<\/script>/i);
   assert.match(
     html,
     /Auth &lt;script&gt;alert\(1\)&lt;\/script&gt; &lt;\/template&gt;/,
   );
+  assert.match(
+    html,
+    /The architecture &lt;script&gt;alert\(1\)&lt;\/script&gt; keeps browser requests/,
+  );
+  assert.match(
+    html,
+    /<pre id="architecture-diagram" class="mermaid architecture-diagram">/,
+  );
+  assert.match(html, /<figcaption>Architecture flowchart<\/figcaption>/);
+  assert.match(
+    html,
+    /https:\/\/cdn\.jsdelivr\.net\/npm\/mermaid@11\.17\.2\/dist\/mermaid\.esm\.min\.mjs/,
+  );
+  assert.match(html, /securityLevel: "strict"/);
+  assert.match(html, /flowchart: \{ htmlLabels: false \}/);
+  assert.match(html, /querySelector: "#architecture-diagram"/);
+  assert.equal((html.match(/<script\b/gi) ?? []).length, 1);
+  assert.match(markdown, /## Architecture design[\s\S]*```mermaid/);
+  assert.match(markdown, /flowchart LR\n  Browser/);
   assert.match(html, /Implementation subtasks/);
   assert.match(html, /<dt>What<\/dt>/);
   assert.match(html, /<dt>Why<\/dt>/);
   assert.match(html, /<dt>How<\/dt>/);
   assert.doesNotMatch(html, /<link\b|<iframe\b|src="https?:/i);
-  assert.equal(extractPlanMarkdown(html), renderPlanMarkdown(candidate));
+  assert.equal(extractPlanMarkdown(html), markdown);
 });
 
 test("extractor rejects a missing, duplicate, or malformed Markdown payload", () => {

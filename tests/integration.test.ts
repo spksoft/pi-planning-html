@@ -40,17 +40,34 @@ test("plan_publish creates one validated HTML artifact and terminates planning",
   const htmlPath = join(cwd, "docs/plan/add-passkey-authentication.html");
   const html = await readFile(htmlPath, "utf8");
   assert.match(html, /data-plan-format="pi-plan-html-v1"/);
+  assert.match(html, /Architecture design/);
+  assert.match(html, /mermaid@11\.17\.2\/dist\/mermaid\.esm\.min\.mjs/);
   assert.match(html, /Implementation subtasks/);
 
-  const invalid = validDraft();
-  invalid.tasks[0] = { ...invalid.tasks[0]!, subtasks: [] };
+  const invalidSubtask = validDraft();
+  invalidSubtask.tasks[0] = { ...invalidSubtask.tasks[0]!, subtasks: [] };
   await assert.rejects(
     () =>
       harness.callTool(
         "plan_publish",
-        invalid as unknown as Record<string, unknown>,
+        invalidSubtask as unknown as Record<string, unknown>,
       ),
     /subtask/i,
+  );
+
+  const invalidArchitecture = validDraft({
+    architecture: {
+      ...validDraft().architecture,
+      diagram: "sequenceDiagram\n  Browser->>Service: Sign in request",
+    },
+  });
+  await assert.rejects(
+    () =>
+      harness.callTool(
+        "plan_publish",
+        invalidArchitecture as unknown as Record<string, unknown>,
+      ),
+    /Architecture diagram/i,
   );
 });
 

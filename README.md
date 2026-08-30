@@ -2,7 +2,7 @@
 
 A small [Pi](https://pi.dev) package with two commands:
 
-- `/plan <request>` researches a request and creates one detailed standalone HTML plan.
+- `/plan <request>` researches a request and creates one detailed HTML plan with an architecture diagram.
 - `/execute-plan [planning-file]` approves a plan, extracts it to Markdown, and starts implementing it.
 
 There is no approval lifecycle, task-progress system, permission gate, or automatic execution handoff.
@@ -31,7 +31,9 @@ pi install git:github.com/spksoft/pi-planning-html@<tag-or-commit>
 docs/plan/add-passkey-authentication.html
 ```
 
-The plan includes outcome and acceptance criteria, scope, constraints, findings, risks, assumptions, engineering considerations, end-to-end validation, and dependency-aware tasks and subtasks. Every task and subtask has detailed **What**, **Why**, **How**, affected files/modules, dependencies, and validation.
+The plan includes outcome and acceptance criteria, scope, constraints, findings, a required architecture-design summary and Mermaid flowchart, risks, assumptions, engineering considerations, end-to-end validation, and dependency-aware tasks and subtasks. Every task and subtask has detailed **What**, **Why**, **How**, affected files/modules, dependencies, and validation.
+
+Each artifact remains a single readable HTML file. When viewed with JavaScript and network access, it imports the version-pinned Mermaid `11.17.2` ESM module from jsDelivr to render the architecture flowchart as SVG. The architecture summary and Mermaid source stay in the document as the no-JavaScript, offline, or rendering-failure fallback, and the extracted Markdown retains the same source in a `mermaid` code fence.
 
 Planning is guidance-driven rather than a sandbox: the prompt tells the agent not to make project changes while planning, and `plan_publish` is the only package-owned planning write. This package does not add a permission-control policy.
 
@@ -68,7 +70,7 @@ The directory must be project-relative and cannot traverse outside the project.
 - `prompts/plan.md` — the planning-only `/plan` contract.
 - `extensions/planning/index.ts` — `plan_question`, `plan_publish`, and `/execute-plan`.
 - `extensions/planning/schema.ts` — detailed plan and subtask validation.
-- `extensions/planning/artifact.ts` — standalone HTML rendering, safe artifact writing, and HTML-to-Markdown extraction.
+- `extensions/planning/artifact.ts` — HTML and CDN Mermaid rendering, safe artifact writing, and HTML-to-Markdown extraction.
 - `tests/` — unit and integration coverage.
 
 ## Development
