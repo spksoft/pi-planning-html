@@ -4,7 +4,7 @@ type ToolResult = {
   terminate?: boolean;
 };
 
-export interface FakeContext {
+interface FakeContext {
   cwd: string;
   hasUI: boolean;
   mode: string;
@@ -36,7 +36,10 @@ export interface Harness {
   ctx: FakeContext;
   activeTools: string[];
   sentUserMessages: string[];
-  callTool: (name: string, params: Record<string, unknown>) => Promise<ToolResult>;
+  callTool: (
+    name: string,
+    params: Record<string, unknown>,
+  ) => Promise<ToolResult>;
   runCommand: (name: string, args?: string) => Promise<void>;
   queueSelect: (...answers: Array<string | undefined>) => void;
   queueInput: (...answers: Array<string | undefined>) => void;

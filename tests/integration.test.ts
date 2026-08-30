@@ -116,7 +116,10 @@ test("/execute-plan without a file approves the latest plan in conversation cont
 
   await harness.runCommand("execute-plan");
   assert.match(
-    await readFile(join(cwd, "docs/plan/add-passkey-authentication.md"), "utf8"),
+    await readFile(
+      join(cwd, "docs/plan/add-passkey-authentication.md"),
+      "utf8",
+    ),
     /# Add passkey authentication/,
   );
   assert.match(

@@ -125,13 +125,24 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /** Returns the most recently published plan on the active Pi conversation branch. */
-function planArtifactFromContext(ctx: ExtensionCommandContext): string | undefined {
+function planArtifactFromContext(
+  ctx: ExtensionCommandContext,
+): string | undefined {
   const entries = ctx.sessionManager.getBranch();
   for (let index = entries.length - 1; index >= 0; index -= 1) {
     const entry = entries[index];
-    if (!isRecord(entry) || entry.type !== "message" || !isRecord(entry.message)) continue;
+    if (
+      !isRecord(entry) ||
+      entry.type !== "message" ||
+      !isRecord(entry.message)
+    )
+      continue;
     const message = entry.message;
-    if (message.role !== "toolResult" || message.toolName !== "plan_publish" || !isRecord(message.details)) {
+    if (
+      message.role !== "toolResult" ||
+      message.toolName !== "plan_publish" ||
+      !isRecord(message.details)
+    ) {
       continue;
     }
     const artifact = message.details.artifact;
@@ -146,10 +157,16 @@ async function resolvePlanFile(
   artifactDirectory: string,
 ): Promise<{ absolutePath: string; relativePath: string }> {
   const original = normalizeUserPath(value);
-  if (!original) throw new Error(`Specify a planning file, for example ${PLAN_FILE_HINT}.`);
-  const requested = original.toLowerCase().endsWith(".html") ? original : `${original}.html`;
+  if (!original)
+    throw new Error(`Specify a planning file, for example ${PLAN_FILE_HINT}.`);
+  const requested = original.toLowerCase().endsWith(".html")
+    ? original
+    : `${original}.html`;
   const projectRoot = await realpath(cwd);
-  const isBareName = !isAbsolute(requested) && !requested.includes("/") && !requested.includes("\\");
+  const isBareName =
+    !isAbsolute(requested) &&
+    !requested.includes("/") &&
+    !requested.includes("\\");
   const candidates = [
     ...(isBareName ? [resolve(projectRoot, artifactDirectory, requested)] : []),
     resolve(projectRoot, requested),
@@ -168,7 +185,9 @@ async function resolvePlanFile(
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     }
   }
-  throw new Error(`Could not find ${requested}. Use a project-relative or absolute path, or a plan filename from ${artifactDirectory}.`);
+  throw new Error(
+    `Could not find ${requested}. Use a project-relative or absolute path, or a plan filename from ${artifactDirectory}.`,
+  );
 }
 
 function executionPrompt(
