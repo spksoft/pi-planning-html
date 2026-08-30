@@ -3,6 +3,7 @@ import { StringEnum } from "@earendil-works/pi-ai";
 import {
   withFileMutationQueue,
   type ExtensionAPI,
+  type ExtensionCommandContext,
 } from "@earendil-works/pi-coding-agent";
 import { realpath } from "node:fs/promises";
 import { isAbsolute, relative, resolve, sep } from "node:path";
@@ -119,25 +120,55 @@ function assertInsideProject(projectRoot: string, target: string): void {
   }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+/** Returns the most recently published plan on the active Pi conversation branch. */
+function planArtifactFromContext(ctx: ExtensionCommandContext): string | undefined {
+  const entries = ctx.sessionManager.getBranch();
+  for (let index = entries.length - 1; index >= 0; index -= 1) {
+    const entry = entries[index];
+    if (!isRecord(entry) || entry.type !== "message" || !isRecord(entry.message)) continue;
+    const message = entry.message;
+    if (message.role !== "toolResult" || message.toolName !== "plan_publish" || !isRecord(message.details)) {
+      continue;
+    }
+    const artifact = message.details.artifact;
+    if (typeof artifact === "string" && artifact.trim()) return artifact;
+  }
+  return undefined;
+}
+
 async function resolvePlanFile(
   cwd: string,
   value: string,
+  artifactDirectory: string,
 ): Promise<{ absolutePath: string; relativePath: string }> {
-  const requested = normalizeUserPath(value);
-  if (!requested)
-    throw new Error(`Specify a planning file, for example ${PLAN_FILE_HINT}.`);
-  if (!requested.toLowerCase().endsWith(".html"))
-    throw new Error("Planning file must use the .html extension.");
-
+  const original = normalizeUserPath(value);
+  if (!original) throw new Error(`Specify a planning file, for example ${PLAN_FILE_HINT}.`);
+  const requested = original.toLowerCase().endsWith(".html") ? original : `${original}.html`;
   const projectRoot = await realpath(cwd);
-  const candidate = resolve(projectRoot, requested);
-  assertInsideProject(projectRoot, candidate);
-  const absolutePath = await realpath(candidate);
-  assertInsideProject(projectRoot, absolutePath);
-  return {
-    absolutePath,
-    relativePath: relative(projectRoot, absolutePath).split(sep).join("/"),
-  };
+  const isBareName = !isAbsolute(requested) && !requested.includes("/") && !requested.includes("\\");
+  const candidates = [
+    ...(isBareName ? [resolve(projectRoot, artifactDirectory, requested)] : []),
+    resolve(projectRoot, requested),
+  ];
+
+  for (const candidate of [...new Set(candidates)]) {
+    assertInsideProject(projectRoot, candidate);
+    try {
+      const absolutePath = await realpath(candidate);
+      assertInsideProject(projectRoot, absolutePath);
+      return {
+        absolutePath,
+        relativePath: relative(projectRoot, absolutePath).split(sep).join("/"),
+      };
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+  }
+  throw new Error(`Could not find ${requested}. Use a project-relative or absolute path, or a plan filename from ${artifactDirectory}.`);
 }
 
 function executionPrompt(
@@ -148,7 +179,7 @@ function executionPrompt(
   const delegation = hasSubagent
     ? "Use the active subagent tool only for dependency-independent, well-bounded implementation tasks; keep integration, validation, and final decisions in this session."
     : "No subagent tool is active, so implement the dependency-ordered tasks directly in this session.";
-  return `Implement the plan extracted from ${htmlPath}.
+  return `The user explicitly approved this plan by running /execute-plan. Implement the plan extracted from ${htmlPath}.
 
 The canonical execution brief is now available at ${markdownPath}. Read it before changing files, then implement its tasks and subtasks in dependency order. Preserve stated constraints, run the task and end-to-end validation, and report deviations or blockers clearly.
 
@@ -258,19 +289,22 @@ export default function planningExtension(pi: ExtensionAPI): void {
     description:
       "Extract a planning HTML file to Markdown and begin implementing it",
     handler: async (args, ctx) => {
-      let requested = args.trim();
-      if (!requested && ctx.hasUI) {
-        requested =
-          (await ctx.ui.input("Planning HTML file", PLAN_FILE_HINT))?.trim() ??
-          "";
-      }
+      const requested = args.trim() || planArtifactFromContext(ctx);
       if (!requested) {
-        ctx.ui.notify(`Usage: /execute-plan ${PLAN_FILE_HINT}`, "error");
+        ctx.ui.notify(
+          `No planning artifact is available in this conversation. Use /execute-plan ${PLAN_FILE_HINT}.`,
+          "error",
+        );
         return;
       }
 
       try {
-        const plan = await resolvePlanFile(ctx.cwd, requested);
+        const config = await loadPlanningConfig(ctx.cwd);
+        const plan = await resolvePlanFile(
+          ctx.cwd,
+          requested,
+          config.artifactDirectory,
+        );
         const markdown = await readPlanMarkdown(plan.absolutePath);
         const markdownPath = markdownPathForPlan(plan.absolutePath);
         await withFileMutationQueue(markdownPath, () =>

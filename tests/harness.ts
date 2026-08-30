@@ -14,6 +14,9 @@ export interface FakeContext {
     notify: (message: string, level?: string) => void;
     notifications: Array<{ message: string; level: string }>;
   };
+  sessionManager: {
+    getBranch: () => unknown[];
+  };
 }
 
 export interface Harness {
@@ -22,7 +25,7 @@ export interface Harness {
     {
       execute: (
         _id: string,
-        params: object,
+        params: Record<string, unknown>,
         signal: undefined,
         update: undefined,
         ctx: FakeContext,
@@ -33,7 +36,7 @@ export interface Harness {
   ctx: FakeContext;
   activeTools: string[];
   sentUserMessages: string[];
-  callTool: (name: string, params: object) => Promise<ToolResult>;
+  callTool: (name: string, params: Record<string, unknown>) => Promise<ToolResult>;
   runCommand: (name: string, args?: string) => Promise<void>;
   queueSelect: (...answers: Array<string | undefined>) => void;
   queueInput: (...answers: Array<string | undefined>) => void;
@@ -52,11 +55,15 @@ export function createHarness(options: { cwd: string; hasUI?: boolean }): {
     notify: (message: string, level = "info") =>
       ui.notifications.push({ message, level }),
   };
+  const entries: unknown[] = [];
   const ctx: FakeContext = {
     cwd: options.cwd,
     hasUI: options.hasUI ?? true,
     mode: options.hasUI === false ? "print" : "tui",
     ui,
+    sessionManager: {
+      getBranch: () => [...entries],
+    },
   };
   const tools = new Map<
     string,
@@ -78,7 +85,22 @@ export function createHarness(options: { cwd: string; hasUI?: boolean }): {
     callTool: async (name, params) => {
       const tool = tools.get(name);
       if (!tool) throw new Error(`Tool not registered: ${name}`);
-      return tool.execute("call-1", params, undefined, undefined, ctx);
+      const toolResult = await tool.execute(
+        "call-1",
+        params,
+        undefined,
+        undefined,
+        ctx,
+      );
+      entries.push({
+        type: "message",
+        message: {
+          role: "toolResult",
+          toolName: name,
+          details: toolResult.details,
+        },
+      });
+      return toolResult;
     },
     runCommand: async (name, args = "") => {
       const command = commands.get(name);

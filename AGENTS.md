@@ -5,7 +5,7 @@
 This repository is a [Pi](https://pi.dev) package with two commands:
 
 - `/plan <request>` researches a request and generates a detailed HTML plan.
-- `/execute-plan <planning-file.html>` extracts the plan to Markdown and starts normal implementation work.
+- `/execute-plan [planning-file]` explicitly approves a plan, extracts it to Markdown, and starts normal implementation work.
 
 ## Pi integration
 
@@ -15,7 +15,7 @@ This repository is a [Pi](https://pi.dev) package with two commands:
 - `/plan` is planning-only. Its final action is `plan_publish`, which writes one renderer-owned HTML artifact under the configured plan directory. It must not implement the request.
 - `plan_question` must use Pi's native `ctx.ui.select()` and `ctx.ui.input()` APIs. Do not create custom question-rendering UI.
 - The package intentionally has no permission-control, approval, lifecycle, or task-progress machinery. Do not describe its prompt guidance as an OS sandbox or a mechanical permission boundary.
-- `/execute-plan` extracts the generated HTML's embedded Markdown to an adjacent `.md` file, then starts normal implementation. Use an active `subagent` tool only for independent, bounded tasks; the primary agent keeps integration and validation.
+- `/execute-plan` with no argument uses the most recently published plan in the active conversation as the user's explicit approval. Without that context, it accepts a full project path or a bare filename resolved from the configured plan directory. It extracts the generated HTML's embedded Markdown to an adjacent `.md` file, then starts normal implementation. Use an active `subagent` tool only for independent, bounded tasks; the primary agent keeps integration and validation.
 - Every planned implementation task and subtask must include detailed What, Why, How, affected files/modules, dependencies, and validation. Plans must record the applicable engineering considerations, assumptions, risks, and end-to-end validation.
 
 ## Project structure

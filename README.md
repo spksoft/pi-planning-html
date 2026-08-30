@@ -3,7 +3,7 @@
 A small [Pi](https://pi.dev) package with two commands:
 
 - `/plan <request>` researches a request and creates one detailed standalone HTML plan.
-- `/execute-plan <planning-file.html>` extracts that plan to Markdown and starts implementing it.
+- `/execute-plan [planning-file]` approves a plan, extracts it to Markdown, and starts implementing it.
 
 There is no approval lifecycle, task-progress system, permission gate, or automatic execution handoff.
 
@@ -38,10 +38,10 @@ Planning is guidance-driven rather than a sandbox: the prompt tells the agent no
 ## Execute a plan
 
 ```text
-/execute-plan docs/plan/add-passkey-authentication.html
+/execute-plan [planning-file]
 ```
 
-The command reads the generated HTML, extracts its embedded canonical Markdown to the adjacent file:
+After a `/plan` run in the same conversation, `/execute-plan` with no argument explicitly approves and executes the most recently published plan. Otherwise provide its full project path or just its filename; a bare filename is resolved from the configured plan directory. The command reads the generated HTML, extracts its embedded canonical Markdown to the adjacent file:
 
 ```text
 docs/plan/add-passkey-authentication.md

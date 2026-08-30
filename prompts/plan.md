@@ -26,5 +26,5 @@ This command is **planning only**. Do not implement the request, edit project so
 After `plan_publish` succeeds, stop. Do not offer to execute the plan and do not implement any task. Execution is a separate explicit command:
 
 ```text
-/execute-plan <planning-file.html>
+/execute-plan [planning-file]
 ```
