@@ -25,7 +25,7 @@ pi install git:github.com/spksoft/pi-planning-html@<tag-or-commit>
 /plan Add user authentication with passkeys
 ```
 
-`/plan` investigates the project, asks only material unresolved questions through Pi's native UI, and ends by creating an HTML file such as:
+`/plan` investigates the project and, when material user-owned decisions remain, asks dependency-ordered decision-tree questions through Pi's native UI before creating the final plan. Each select-style question includes **Skip all remaining questions and apply your best judgment**; that choice ends the interview and records consequential decisions as assumptions. `/plan` ends by creating an HTML file such as:
 
 ```text
 docs/plan/add-passkey-authentication.html
@@ -67,7 +67,7 @@ The directory must be project-relative and cannot traverse outside the project.
 
 ## Package contents
 
-- `prompts/plan.md` — the planning-only `/plan` contract.
+- `prompts/plan.md` — the planning-only `/plan` contract and internal decision-tree questioning workflow.
 - `extensions/planning/index.ts` — `plan_question`, `plan_publish`, and `/execute-plan`.
 - `extensions/planning/schema.ts` — detailed plan and subtask validation.
 - `extensions/planning/artifact.ts` — HTML and CDN Mermaid rendering, safe artifact writing, and HTML-to-Markdown extraction.

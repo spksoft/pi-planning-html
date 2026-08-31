@@ -14,15 +14,26 @@ This command is **planning only**. Do not implement the request, edit project so
 ## Process
 
 1. Read applicable project instructions and investigate the repository. Discover facts yourself instead of asking the user for paths, versions, or current behavior that tools can reveal.
-2. Ask only material user-owned decisions that remain after research. Use `plan_question` for an interactive question: it uses Pi's native selection/input UI. Do not build or simulate a separate question display.
+2. Identify whether material user-owned decisions remain after research. If they do, use the built-in decision-tree questioning workflow below before creating the final plan. `plan_question` uses Pi's native selection/input UI. Do not build or simulate a separate question display.
 3. Preserve explicit user constraints. State assumptions and non-blocking open questions plainly. Resolve blocking questions before publishing.
-4. Produce a complete, dependency-aware plan. It must cover:
+
+### Built-in decision-tree questioning workflow
+
+This workflow is part of `/plan`, not a separately exposed skill.
+
+1. Map the remaining user-owned decisions as a design tree, where each decision branches into decisions that depend on it. Facts remain the agent's responsibility: investigate them with repository and available tools rather than asking the user.
+2. Work in rounds. The frontier contains every decision whose prerequisites are settled. Ask all currently unblocked frontier questions before any question that depends on an answer from that round.
+3. Ask every frontier item with `plan_question`. Prefix the question with a stable `Q<number>` label and include a clearly marked recommended answer in its text. Use concrete options where possible. Include **Skip all remaining questions and apply your best judgment** as an option in every select-style question; if the user selects it, stop questioning, make well-supported choices for every remaining decision, and record consequential choices as assumptions in the plan. Retain free text only when it is genuinely useful. Never create a custom question UI.
+4. Wait for answers to the whole frontier before recomputing the tree. If fact-finding remains in progress, treat only its downstream decisions as blocked and continue with independent frontier questions.
+5. The interview finishes when no user-owned decisions remain. Summarize the settled choices and ask the user to confirm the shared understanding before publishing the plan. Do not request this confirmation after the user selected the skip-all option.
+
+6. Produce a complete, dependency-aware plan. It must cover:
    - outcome, scope, acceptance criteria, findings, constraints, risks, assumptions, and end-to-end validation;
    - an architecture design with a concise summary and a valid Mermaid `flowchart` or `graph` declaration that shows primary actors, component boundaries, persisted or external dependencies, and directional interactions;
    - ordered tasks and implementation subtasks with stable IDs and dependency IDs;
    - for **every** task and subtask: detailed **What**, **Why**, **How**, affected files/modules, dependencies, and concrete validation;
    - engineering considerations for architecture, security, data/migrations, testing, rollout/rollback, observability, and performance/accessibility. Explain why an area is not applicable when appropriate.
-5. Call `plan_publish` once with the full plan. It validates the plan and writes the single HTML file under `docs/plan/` by default (or `.pi/planning.json`'s `artifact.directory`). Do not use generic write/edit tools to create the plan.
+7. Call `plan_publish` once with the full plan. It validates the plan and writes the single HTML file under `docs/plan/` by default (or `.pi/planning.json`'s `artifact.directory`). Do not use generic write/edit tools to create the plan.
 
 After `plan_publish` succeeds, stop. Do not offer to execute the plan and do not implement any task. Execution is a separate explicit command:
 

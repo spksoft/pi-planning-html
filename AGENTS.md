@@ -10,7 +10,7 @@ This repository is a [Pi](https://pi.dev) package with two commands:
 ## Pi integration
 
 - Follow Pi's documented package conventions.
-- `/plan` is the `prompts/plan.md` prompt template and must be declared by `pi.prompts` in `package.json`.
+- `/plan` is the `prompts/plan.md` prompt template and must be declared by `pi.prompts` in `package.json`. Its decision-tree questioning workflow remains internal to the `/plan` prompt; do not expose it as a separate skill.
 - `/execute-plan` and the planning tools live in `extensions/planning/`; keep the extension declared by `pi.extensions` and included in published package files.
 - `/plan` is planning-only. Its final action is `plan_publish`, which writes one renderer-owned HTML artifact under the configured plan directory. It must not implement the request.
 - `plan_question` must use Pi's native `ctx.ui.select()` and `ctx.ui.input()` APIs. Do not create custom question-rendering UI.
