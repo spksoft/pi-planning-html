@@ -22,6 +22,7 @@ import {
 } from "./schema.ts";
 
 const PLAN_FILE_HINT = "docs/plan/<plan>.html";
+const MINIMUM_QUESTION_OPTIONS = 4;
 
 const WorkItemSchema = Type.Object({
   id: Type.String({ minLength: 1 }),
@@ -214,14 +215,14 @@ export default function planningExtension(pi: ExtensionAPI): void {
     name: "plan_question",
     label: "Plan Question",
     description:
-      "Ask one material planning question using Pi's native select/input UI. Use only after researching discoverable facts.",
-    promptSnippet: "Ask material planning questions through Pi's native UI",
+      "Ask one material planning question with at least four choices and an always-available free-text answer through Pi's native select/input UI. Use only after researching discoverable facts.",
+    promptSnippet:
+      "Ask material planning questions with four choices and free-text answers through Pi's native UI",
     parameters: Type.Object({
       question: Type.String({ minLength: 8 }),
-      options: Type.Optional(
-        Type.Array(Type.String({ minLength: 1 }), { minItems: 1 }),
-      ),
-      allowFreeText: Type.Optional(Type.Boolean()),
+      options: Type.Array(Type.String({ minLength: 1 }), {
+        minItems: MINIMUM_QUESTION_OPTIONS,
+      }),
     }),
     executionMode: "sequential",
     async execute(_id, params, _signal, _onUpdate, ctx) {
@@ -233,20 +234,15 @@ export default function planningExtension(pi: ExtensionAPI): void {
         );
       }
 
-      const options = [...(params.options ?? [])];
-      const allowFreeText = params.allowFreeText !== false;
-      if (options.length === 0) {
-        const answer = await ctx.ui.input(params.question, "Your answer");
-        return result(
-          answer?.trim()
-            ? `User answered: ${answer.trim()}`
-            : "User cancelled the question.",
-          { question: params.question, answer: answer?.trim() || null },
+      const options = [...params.options];
+      if (options.length < MINIMUM_QUESTION_OPTIONS) {
+        throw new Error(
+          `Plan questions need at least ${MINIMUM_QUESTION_OPTIONS} choices.`,
         );
       }
 
-      const other = allowFreeText ? freeTextChoice(options) : undefined;
-      const choices = other ? [...options, other] : options;
+      const other = freeTextChoice(options);
+      const choices = [...options, other];
       const selected = await ctx.ui.select(params.question, choices);
       if (!selected)
         return result("User cancelled the question.", {

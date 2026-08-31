@@ -28,5 +28,7 @@ test("/plan contains its internal decision-tree workflow without exposing a skil
     prompt,
     /Skip all remaining questions and apply your best judgment/,
   );
+  assert.match(prompt, /at least four concrete choices/i);
+  assert.match(prompt, /always adds a free-text answer choice/i);
   assert.match(prompt, /Wait for answers to the whole frontier/);
 });

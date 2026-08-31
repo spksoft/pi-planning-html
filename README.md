@@ -25,7 +25,7 @@ pi install git:github.com/spksoft/pi-planning-html@<tag-or-commit>
 /plan Add user authentication with passkeys
 ```
 
-`/plan` investigates the project and, when material user-owned decisions remain, asks dependency-ordered decision-tree questions through Pi's native UI before creating the final plan. Each select-style question includes **Skip all remaining questions and apply your best judgment**; that choice ends the interview and records consequential decisions as assumptions. `/plan` ends by creating an HTML file such as:
+`/plan` investigates the project and, when material user-owned decisions remain, asks dependency-ordered decision-tree questions through Pi's native UI before creating the final plan. Every question presents at least four concrete choices plus a free-text answer choice. Each select-style question includes **Skip all remaining questions and apply your best judgment**; that choice ends the interview and records consequential decisions as assumptions. `/plan` ends by creating an HTML file such as:
 
 ```text
 docs/plan/add-passkey-authentication.html

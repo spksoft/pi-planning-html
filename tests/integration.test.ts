@@ -71,27 +71,47 @@ test("plan_publish creates one validated HTML artifact and terminates planning",
   );
 });
 
-test("plan_question delegates presentation to Pi's native select and input UI", async () => {
+test("plan_question requires four choices and always provides a native free-text answer", async () => {
   const { harness } = await bootstrap();
+  const options = [
+    "During sign in",
+    "In account settings",
+    "After account recovery",
+    "In an onboarding flow",
+  ];
+
+  await assert.rejects(
+    () =>
+      harness.callTool("plan_question", {
+        question: "Where should the user enable passkeys?",
+        options: options.slice(0, 3),
+      }),
+    /at least 4 choices/i,
+  );
+
   harness.queueSelect("Other answer…");
   harness.queueInput("Use an account setting");
   const answer = await harness.callTool("plan_question", {
     question: "Where should the user enable passkeys?",
-    options: ["During sign in", "In account settings"],
+    options,
   });
   assert.match(answer.content[0]!.text, /Use an account setting/);
 
-  harness.queueSelect("Other answer…");
+  harness.queueSelect("Other answer… (2)");
+  harness.queueInput("Keep the literal option and add this answer");
   const literalOption = await harness.callTool("plan_question", {
     question: "Should the literal option be preserved?",
-    options: ["Other answer…"],
-    allowFreeText: false,
+    options: ["Other answer…", ...options.slice(0, 3)],
   });
-  assert.match(literalOption.content[0]!.text, /User selected: Other answer…/);
+  assert.match(
+    literalOption.content[0]!.text,
+    /Keep the literal option and add this answer/,
+  );
 
   const noUi = await bootstrap({ hasUI: false });
   const unavailable = await noUi.harness.callTool("plan_question", {
     question: "Which rollout should this plan use?",
+    options,
   });
   assert.match(unavailable.content[0]!.text, /Interactive UI is unavailable/);
 });
