@@ -25,7 +25,9 @@ pi install git:github.com/spksoft/pi-planning-html@<tag-or-commit>
 /plan Add user authentication with passkeys
 ```
 
-`/plan` investigates the project and, when material user-owned decisions remain, asks dependency-ordered decision-tree questions through Pi's native UI before creating the final plan. Every question presents at least four concrete choices plus a free-text answer choice. Each select-style question includes **Skip all remaining questions and apply your best judgment**; that choice ends the interview and records consequential decisions as assumptions. `/plan` ends by creating an HTML file such as:
+`/plan` investigates the project and runs a compact, single-session wayfinding phase before creating the final plan. It first bounds the destination, then maintains a transient map of decisions so far, fog, the currently answerable frontier, and out-of-scope work. The map contains decision questions rather than implementation steps: discoverable facts are researched, dependent questions stay blocked, and the map is recomputed after each material answer so stale speculative questions do not accumulate. This adaptation does not create issue-tracker tickets, local map files, or a separate `/wayfinder` skill.
+
+Material user-owned frontier questions use Pi's native UI. Every question presents at least four concrete choices plus a free-text answer choice and briefly explains its recommendation. Each question includes **Skip all remaining questions and apply your best judgment**; that choice ends the interview and records consequential decisions as assumptions. `/plan` ends by creating an HTML file such as:
 
 ```text
 docs/plan/add-passkey-authentication.html
@@ -67,7 +69,7 @@ The directory must be project-relative and cannot traverse outside the project.
 
 ## Package contents
 
-- `prompts/plan.md` — the planning-only `/plan` contract and internal decision-tree questioning workflow.
+- `prompts/plan.md` — the planning-only `/plan` contract and internal wayfinding workflow.
 - `extensions/planning/index.ts` — `plan_question`, `plan_publish`, and `/execute-plan`.
 - `extensions/planning/schema.ts` — detailed plan and subtask validation.
 - `extensions/planning/artifact.ts` — HTML and CDN Mermaid rendering, safe artifact writing, and HTML-to-Markdown extraction.
