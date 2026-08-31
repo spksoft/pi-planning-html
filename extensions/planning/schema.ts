@@ -81,7 +81,8 @@ export interface ValidationResult {
   errors: string[];
 }
 
-const ID_PATTERN = /^[a-zA-Z][a-zA-Z0-9_-]*$/;
+// Accept both descriptive kebab-case IDs and conventional hierarchical IDs (T1.1).
+const ID_PATTERN = /^[a-zA-Z][a-zA-Z0-9_.-]*$/;
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const PLACEHOLDER_PATTERN =
   /^(?:tbd|todo|n\/?a|none|same as above|update (?:the )?code|implement (?:the )?(?:change|feature)|fix (?:the )?(?:issue|bug)|do it)[.!]?$/i;
@@ -104,7 +105,9 @@ function validateWorkItem(
 ): void {
   const id = item.id || "<missing-id>";
   if (!ID_PATTERN.test(item.id))
-    errors.push(`${label} ${id} has an invalid stable ID.`);
+    errors.push(
+      `${label} ${id} has an invalid stable ID. IDs must start with a letter and use only letters, digits, hyphens, underscores, or dots.`,
+    );
   if (!present(item.title, 4))
     errors.push(`${label} ${id} needs a specific title.`);
   if (!present(item.what, 12))

@@ -42,7 +42,7 @@ This is a single-session adaptation of Wayfinder's destination, fog, and frontie
 8. Produce a complete, dependency-aware plan. It must cover:
    - outcome, scope, acceptance criteria, findings, constraints, risks, assumptions, and end-to-end validation;
    - an architecture design with a concise summary and a valid Mermaid `flowchart` or `graph` declaration that shows primary actors, component boundaries, persisted or external dependencies, and directional interactions;
-   - ordered tasks and implementation subtasks with stable IDs and dependency IDs;
+   - ordered tasks and implementation subtasks with stable IDs and dependency IDs. An ID must start with a letter and may contain only letters, digits, hyphens, underscores, and dots (for example `T1`, `T1.1`, or `extend-auth-contract`); dependencies must reuse the exact ID;
    - for **every** task and subtask: detailed **What**, **Why**, **How**, affected files/modules, dependencies, and concrete validation;
    - engineering considerations for architecture, security, data/migrations, testing, rollout/rollback, observability, and performance/accessibility. Explain why an area is not applicable when appropriate.
 9. Call `plan_publish` once with the full plan. It validates the plan and writes the single HTML file under `docs/plan/` by default (or `.pi/planning.json`'s `artifact.directory`). Do not use generic write/edit tools to create the plan.

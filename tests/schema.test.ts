@@ -12,6 +12,18 @@ test("a complete dependency-aware plan is accepted", () => {
   assert.equal(result.valid, true);
 });
 
+test("hierarchical dotted task IDs are accepted and resolve as dependencies", () => {
+  const draft = validDraft();
+  const task = draft.tasks[0]!;
+  const subtask = task.subtasks[0]!;
+  task.id = "T1";
+  subtask.id = "T1.1";
+  subtask.dependsOn = ["T1"];
+  draft.tasks[1]!.dependsOn = ["T1"];
+
+  assert.deepEqual(validatePlanDraft(draft).errors, []);
+});
+
 test("every task and subtask requires concrete What, Why, How, files, and validation", () => {
   for (const field of ["what", "why", "how"] as const) {
     const draft = validDraft();
