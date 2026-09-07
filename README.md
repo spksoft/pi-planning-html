@@ -27,15 +27,15 @@ pi install git:github.com/spksoft/pi-planning-html@<tag-or-commit>
 
 `/plan` investigates the project and runs a compact, single-session wayfinding phase before creating the final plan. It first bounds the destination, then maintains a transient map of decisions so far, fog, the currently answerable frontier, and out-of-scope work. The map contains decision questions rather than implementation steps: discoverable facts are researched, dependent questions stay blocked, and the map is recomputed after each material answer so stale speculative questions do not accumulate. This adaptation does not create issue-tracker tickets, local map files, or a separate `/wayfinder` skill.
 
-Material user-owned frontier questions use Pi's native UI. Every question presents at least four concrete choices plus a free-text answer choice and briefly explains its recommendation. Each question includes **Skip all remaining questions and apply your best judgment**; that choice ends the interview and records consequential decisions as assumptions. `/plan` ends by creating an HTML file such as:
+Material user-owned frontier questions use Pi's native UI. Every question presents at least four concrete choices plus a free-text answer choice and briefly explains its recommendation. `plan_question` automatically adds **Skip all remaining questions and apply your best judgment**; that choice ends the interview and records consequential planner judgments as provisional decisions or assumptions with provenance, a resolution point, and fallback. `/plan` ends by creating an HTML file such as:
 
 ```text
 docs/plan/add-passkey-authentication.html
 ```
 
-The plan includes outcome and acceptance criteria, scope, constraints, findings, a required architecture-design summary and Mermaid flowchart, risks, assumptions, engineering considerations, end-to-end validation, and dependency-aware tasks and subtasks. Every task and subtask has detailed **What**, **Why**, **How**, affected files/modules, dependencies, and validation.
+The plan includes repository evidence (with publish-time observed-seam checks), requirements, observable acceptance criteria, decisions, scope, constraints, findings, a typed architecture design, risks, assumptions, deferred unknowns, engineering considerations, validations, and dependency-aware tasks. Requirements (`REQ-*`) link to acceptance criteria (`AC-*`), implementation tasks, and validations (`VAL-*`); consequential decisions (`DEC-*`) preserve rationale, alternatives, consequences, and reversibility. Every task and detailed decomposition subtask has **What**, **Why**, **How**, observed/proposed files/modules, and validation IDs. Executable tasks additionally state expected behavior and parallel-safety guidance. Task dependencies describe executable ordering; subtasks are detailed decomposition notes rather than hidden dependency nodes.
 
-Each artifact remains a single readable HTML file. When viewed with JavaScript and network access, it imports the version-pinned Mermaid `11.17.2` ESM module from jsDelivr to render the architecture flowchart as SVG. The architecture summary and Mermaid source stay in the document as the no-JavaScript, offline, or rendering-failure fallback, and the extracted Markdown retains the same source in a `mermaid` code fence.
+Each artifact remains a single readable, offline-first HTML file. It has no scripts, network dependencies, or browser-side diagram renderer. The renderer produces static inline SVG architecture and task-dependency views plus visible HTML relationship tables from the same validated plan data, with a table of contents, semantic headings, responsive layout, print styles, restrictive CSP, and canonical Markdown embedded for execution.
 
 Planning is guidance-driven rather than a sandbox: the prompt tells the agent not to make project changes while planning, and `plan_publish` is the only package-owned planning write. This package does not add a permission-control policy.
 
@@ -45,7 +45,7 @@ Planning is guidance-driven rather than a sandbox: the prompt tells the agent no
 /execute-plan [planning-file]
 ```
 
-After a `/plan` run in the same conversation, `/execute-plan` with no argument explicitly approves and executes the most recently published plan. Otherwise provide its full project path or just its filename; a bare filename is resolved from the configured plan directory. The command reads the generated HTML, extracts its embedded canonical Markdown to the adjacent file:
+After a `/plan` run in the same conversation, `/execute-plan` with no argument explicitly approves and executes only the exact integrity-verified artifact published in that conversation. It rejects a changed, overwritten, or mismatched artifact. Otherwise provide its full project path or just its filename; a bare filename is resolved from the configured plan directory. Explicit files are still validated for their embedded candidate and Markdown integrity metadata. The command extracts canonical Markdown to the adjacent file:
 
 ```text
 docs/plan/add-passkey-authentication.md
@@ -71,8 +71,8 @@ The directory must be project-relative and cannot traverse outside the project.
 
 - `prompts/plan.md` — the planning-only `/plan` contract and internal wayfinding workflow.
 - `extensions/planning/index.ts` — `plan_question`, `plan_publish`, and `/execute-plan`.
-- `extensions/planning/schema.ts` — detailed plan and subtask validation.
-- `extensions/planning/artifact.ts` — HTML and CDN Mermaid rendering, safe artifact writing, and HTML-to-Markdown extraction.
+- `extensions/planning/schema.ts` — traceability, decisions, task hierarchy, architecture graph, and implementation-readiness validation.
+- `extensions/planning/artifact.ts` — offline static HTML/SVG rendering, safe artifact writing, integrity metadata, and HTML-to-Markdown extraction.
 - `tests/` — unit and integration coverage.
 
 ## Development

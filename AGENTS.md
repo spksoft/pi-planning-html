@@ -15,15 +15,15 @@ This repository is a [Pi](https://pi.dev) package with two commands:
 - `/plan` is planning-only. Its final action is `plan_publish`, which writes one renderer-owned HTML artifact under the configured plan directory. It must not implement the request.
 - `plan_question` must use Pi's native `ctx.ui.select()` and `ctx.ui.input()` APIs. Do not create custom question-rendering UI.
 - The package intentionally has no permission-control, approval, lifecycle, or task-progress machinery. Do not describe its prompt guidance as an OS sandbox or a mechanical permission boundary.
-- `/execute-plan` with no argument uses the most recently published plan in the active conversation as the user's explicit approval. Without that context, it accepts a full project path or a bare filename resolved from the configured plan directory. It extracts the generated HTML's embedded Markdown to an adjacent `.md` file, then starts normal implementation. Use an active `subagent` tool only for independent, bounded tasks; the primary agent keeps integration and validation.
-- Every planned implementation task and subtask must include detailed What, Why, How, affected files/modules, dependencies, and validation. Plans must record the applicable engineering considerations, assumptions, risks, and end-to-end validation.
+- `/execute-plan` with no argument uses the most recently published integrity-verified plan in the active conversation as the user's explicit approval. It verifies the exact artifact path, complete HTML hash, candidate digest, and embedded Markdown hash before extraction. Without that context, it accepts a full project path or a bare filename resolved from the configured plan directory; explicitly named artifacts still require valid internal integrity metadata. It extracts canonical Markdown to an adjacent `.md` file, then starts normal implementation. Use an active `subagent` tool only for independent, bounded tasks; the primary agent keeps integration and validation.
+- Every planned implementation task and subtask must include detailed What, Why, How, affected files/modules, and validation. Executable tasks also state expected behavior, parallel-safety guidance, and task-level dependencies; subtasks are non-executable decomposition notes. Plans must record evidence, requirements, acceptance criteria, decisions, validation proof, applicable engineering considerations, assumptions, risks, unknowns, and end-to-end validation.
 
 ## Project structure
 
 - `prompts/plan.md` — model-facing planning-only contract.
 - `extensions/planning/index.ts` — Pi tools and `/execute-plan` command.
-- `extensions/planning/schema.ts` — plan, task, subtask, and engineering-coverage validation.
-- `extensions/planning/artifact.ts` — HTML rendering, contained writes, and embedded-Markdown extraction.
+- `extensions/planning/schema.ts` — traceability, architecture, task hierarchy, repository-seam audit, and engineering-coverage validation.
+- `extensions/planning/artifact.ts` — script-free offline HTML/SVG rendering, integrity metadata, contained writes, and embedded-Markdown extraction.
 - `extensions/planning/config.ts` — optional plan-directory setting.
 - `tests/` — Node test-runner coverage for artifacts, schema validation, and command wiring.
 

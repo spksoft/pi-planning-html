@@ -1,0 +1,1351 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Research-backed recommendations for making Pi Planning HTML implementation-ready, traceable, and easy to read."
+    />
+    <title>Planning Mode Improvement Recommendations</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #172033;
+        --muted: #526078;
+        --paper: #ffffff;
+        --canvas: #f5f7fb;
+        --line: #d8deea;
+        --blue: #2057c8;
+        --blue-soft: #e9f0ff;
+        --green: #157a52;
+        --green-soft: #e8f7f0;
+        --amber: #9a5a00;
+        --amber-soft: #fff4dd;
+        --red: #b22d36;
+        --red-soft: #ffebed;
+        --violet: #6941c6;
+        --violet-soft: #f1edff;
+        --shadow: 0 16px 46px rgba(28, 43, 74, 0.09);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        background: var(--canvas);
+        color: var(--ink);
+        font:
+          16px/1.62 ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+      a {
+        color: var(--blue);
+        text-decoration-thickness: 0.08em;
+        text-underline-offset: 0.16em;
+      }
+      a:hover {
+        color: #143b91;
+      }
+      .page {
+        width: min(1180px, calc(100% - 32px));
+        margin: 0 auto 72px;
+      }
+      .hero {
+        margin: 28px 0 22px;
+        padding: clamp(28px, 6vw, 68px);
+        color: #fff;
+        border-radius: 22px;
+        background:
+          radial-gradient(
+            circle at 88% 15%,
+            #618bff 0,
+            rgba(97, 139, 255, 0) 28%
+          ),
+          linear-gradient(135deg, #111e3b, #214ca4);
+        box-shadow: var(--shadow);
+      }
+      .eyebrow {
+        margin: 0 0 10px;
+        color: #c9d8ff;
+        font-weight: 750;
+        font-size: 0.8rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      h1,
+      h2,
+      h3,
+      h4 {
+        line-height: 1.18;
+        letter-spacing: -0.02em;
+      }
+      h1 {
+        max-width: 920px;
+        margin: 0;
+        font-size: clamp(2.15rem, 5vw, 4.3rem);
+      }
+      h2 {
+        margin: 0 0 18px;
+        font-size: clamp(1.45rem, 3vw, 2.15rem);
+      }
+      h3 {
+        margin: 0 0 8px;
+        font-size: 1.15rem;
+      }
+      h4 {
+        margin: 0 0 6px;
+        font-size: 1rem;
+      }
+      p {
+        margin: 0 0 14px;
+      }
+      .lead {
+        max-width: 810px;
+        margin: 22px 0 0;
+        color: #e8eeff;
+        font-size: clamp(1.06rem, 2vw, 1.28rem);
+      }
+      .meta {
+        margin: 20px 0 0;
+        color: #d5e0ff;
+        font-size: 0.92rem;
+      }
+      .meta span {
+        display: inline-block;
+        margin: 0 14px 4px 0;
+      }
+      .toc,
+      section {
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: 0 3px 14px rgba(28, 43, 74, 0.035);
+      }
+      .toc {
+        padding: 22px 26px;
+        margin-bottom: 22px;
+      }
+      .toc ol {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 28px;
+        margin: 10px 0 0;
+        padding-left: 20px;
+      }
+      section {
+        margin: 22px 0;
+        padding: clamp(22px, 4vw, 42px);
+      }
+      .summary {
+        border-left: 6px solid var(--blue);
+      }
+      .callout {
+        padding: 18px 20px;
+        border-radius: 10px;
+        border: 1px solid;
+        margin: 20px 0;
+      }
+      .callout strong {
+        display: block;
+        margin-bottom: 5px;
+      }
+      .callout p:last-child {
+        margin-bottom: 0;
+      }
+      .callout.info {
+        color: #153a8d;
+        background: var(--blue-soft);
+        border-color: #bfd0ff;
+      }
+      .callout.success {
+        color: #0b5a3c;
+        background: var(--green-soft);
+        border-color: #b7e6d0;
+      }
+      .callout.warning {
+        color: #704100;
+        background: var(--amber-soft);
+        border-color: #f1d18b;
+      }
+      .callout.danger {
+        color: #861e28;
+        background: var(--red-soft);
+        border-color: #f0b9be;
+      }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        gap: 14px;
+      }
+      .card {
+        padding: 19px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #fff;
+      }
+      .card p:last-child {
+        margin-bottom: 0;
+      }
+      .tag {
+        display: inline-block;
+        margin-bottom: 9px;
+        padding: 3px 8px;
+        border-radius: 999px;
+        color: #153a8d;
+        background: var(--blue-soft);
+        font-size: 0.76rem;
+        font-weight: 750;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      .tag.green {
+        color: #075a3a;
+        background: var(--green-soft);
+      }
+      .tag.amber {
+        color: #704100;
+        background: var(--amber-soft);
+      }
+      .tag.violet {
+        color: #4d2698;
+        background: var(--violet-soft);
+      }
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 22px;
+      }
+      .diagram-wrap {
+        overflow-x: auto;
+        padding: 8px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #fcfdff;
+      }
+      figure {
+        margin: 20px 0;
+      }
+      figcaption {
+        margin: 10px 4px 0;
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+      svg {
+        display: block;
+        min-width: 760px;
+        width: 100%;
+        height: auto;
+      }
+      .flow-node {
+        fill: #fff;
+        stroke: #a9b9db;
+        stroke-width: 1.5;
+      }
+      .flow-node.focus {
+        fill: #e9f0ff;
+        stroke: #2057c8;
+        stroke-width: 2;
+      }
+      .flow-node.gate {
+        fill: #e8f7f0;
+        stroke: #157a52;
+        stroke-width: 2;
+      }
+      .flow-label {
+        fill: #172033;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        font-size: 15px;
+        font-weight: 700;
+        text-anchor: middle;
+      }
+      .flow-sub {
+        fill: #526078;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        font-size: 11px;
+        text-anchor: middle;
+      }
+      .arrow {
+        stroke: #526078;
+        stroke-width: 2;
+        fill: none;
+        marker-end: url(#arrow);
+      }
+      .arrow-dashed {
+        stroke: #9a5a00;
+        stroke-width: 2;
+        stroke-dasharray: 5 5;
+        fill: none;
+        marker-end: url(#arrow-amber);
+      }
+      .table-wrap {
+        overflow-x: auto;
+        margin: 18px 0;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 690px;
+      }
+      th,
+      td {
+        padding: 13px 12px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+        text-align: left;
+      }
+      th {
+        color: #263a63;
+        background: #f5f7fc;
+        font-size: 0.84rem;
+        letter-spacing: 0.035em;
+        text-transform: uppercase;
+      }
+      tr:last-child td {
+        border-bottom: 0;
+      }
+      code {
+        padding: 0.1em 0.32em;
+        border-radius: 4px;
+        color: #273d70;
+        background: #edf1f9;
+        font:
+          0.88em ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          Consolas,
+          monospace;
+      }
+      pre {
+        overflow-x: auto;
+        margin: 14px 0;
+        padding: 18px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #111b33;
+        color: #e7eeff;
+        font:
+          0.85rem/1.6 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          Consolas,
+          monospace;
+      }
+      ul,
+      ol {
+        padding-left: 1.25em;
+      }
+      li {
+        margin: 0.4em 0;
+      }
+      .priority {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 42px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        color: #fff;
+        font-weight: 800;
+        font-size: 0.8rem;
+      }
+      .p0 {
+        background: var(--red);
+      }
+      .p1 {
+        background: var(--amber);
+      }
+      .p2 {
+        background: var(--blue);
+      }
+      .p3 {
+        background: var(--violet);
+      }
+      .checklist {
+        list-style: none;
+        padding: 0;
+      }
+      .checklist li {
+        position: relative;
+        padding-left: 28px;
+      }
+      .checklist li::before {
+        content: "✓";
+        position: absolute;
+        left: 0;
+        color: var(--green);
+        font-weight: 900;
+      }
+      .sources li {
+        margin-bottom: 10px;
+      }
+      .small {
+        color: var(--muted);
+        font-size: 0.91rem;
+      }
+      .footer {
+        padding: 20px 0;
+        color: var(--muted);
+        font-size: 0.9rem;
+        text-align: center;
+      }
+      @media (max-width: 760px) {
+        .page {
+          width: min(100% - 20px, 1180px);
+        }
+        .hero {
+          margin-top: 10px;
+          border-radius: 14px;
+        }
+        .grid-2 {
+          grid-template-columns: 1fr;
+        }
+        section {
+          border-radius: 12px;
+        }
+      }
+      @media print {
+        @page {
+          margin: 15mm;
+        }
+        body {
+          background: #fff;
+          font-size: 10.5pt;
+        }
+        .page {
+          width: 100%;
+          margin: 0;
+        }
+        .hero,
+        section,
+        .toc {
+          box-shadow: none;
+          break-inside: avoid;
+        }
+        .hero {
+          color: #111;
+          background: #fff;
+          border: 2px solid #111e3b;
+        }
+        .hero .eyebrow,
+        .hero .lead,
+        .hero .meta {
+          color: #273a66;
+        }
+        a {
+          color: #111;
+        }
+        .diagram-wrap {
+          overflow: visible;
+        }
+        svg {
+          min-width: 0;
+        }
+        h2,
+        h3 {
+          break-after: avoid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="hero">
+        <p class="eyebrow">Research synthesis · Pi Planning HTML</p>
+        <h1>
+          Make planning mode implementation-ready, traceable, and easy to
+          execute
+        </h1>
+        <p class="lead">
+          Improve the existing <code>/plan</code> workflow by preserving
+          decisions, making requirements observable, enforcing traceability, and
+          rendering an offline-first plan that people can scan, trust, and
+          implement without rediscovering intent.
+        </p>
+        <p class="meta">
+          <span>Scope: prompt, schema, renderer, execution handoff, tests</span
+          ><span
+            >Evidence: current implementation audit + primary-source
+            research</span
+          >
+        </p>
+      </header>
+
+      <nav class="toc" aria-label="Table of contents">
+        <strong>Contents</strong>
+        <ol>
+          <li><a href="#recommendation">Recommendation</a></li>
+          <li><a href="#target-flow">Target planning flow</a></li>
+          <li><a href="#gaps">Current gaps</a></li>
+          <li><a href="#data-model">Plan data model</a></li>
+          <li><a href="#html-diagrams">Readable HTML and diagrams</a></li>
+          <li><a href="#roadmap">Delivery roadmap</a></li>
+          <li><a href="#quality-gates">Publish quality gates</a></li>
+          <li><a href="#sources">Sources</a></li>
+        </ol>
+      </nav>
+
+      <section id="recommendation" class="summary">
+        <h2>Recommendation</h2>
+        <p>
+          Keep the current single-session, planning-only model. Do
+          <strong>not</strong> copy Matt Pocock’s issue-tracker workflow or add
+          persistent planning maps. Instead, adopt its useful ideas inside one
+          plan: a dependency-aware question frontier, explicit decisions, an
+          honest fog/deferred-unknowns ledger, and tasks that represent
+          independently verifiable slices.
+        </p>
+        <div class="callout success">
+          <strong>North-star outcome</strong>
+          <p>
+            A published plan should let a fresh implementation agent answer:
+            <em
+              >what must change, why, what is already decided, what is still
+              uncertain, where the verified seams are, how each requirement is
+              proven, and whether the artifact being executed is exactly the
+              artifact that was approved.</em
+            >
+          </p>
+        </div>
+        <div class="cards">
+          <article class="card">
+            <span class="tag">Preserve intent</span>
+            <h3>Decisions are first-class</h3>
+            <p>
+              Record user choices, evidence-based choices, alternatives,
+              rationale, consequences, and reversibility. Do not lose them
+              between interview and <code>/execute-plan</code>.
+            </p>
+          </article>
+          <article class="card">
+            <span class="tag green">Prove completion</span>
+            <h3>Requirements have observable oracles</h3>
+            <p>
+              Link requirements to acceptance criteria, tasks, validations, and
+              expected evidence—not adjectives such as “robust” or
+              “production-ready.”
+            </p>
+          </article>
+          <article class="card">
+            <span class="tag amber">Avoid false precision</span>
+            <h3>Every concrete claim has provenance</h3>
+            <p>
+              Mark it observed in the repository, chosen by the user,
+              source-backed, assumed, proposed, or unknown. Exact existing paths
+              are useful; invented paths are not.
+            </p>
+          </article>
+          <article class="card">
+            <span class="tag violet">Make it legible</span>
+            <h3>HTML is semantic first, visual second</h3>
+            <p>
+              Use a table of contents, task index, strong hierarchy, print
+              styles, generated relationship tables, and diagrams derived from
+              the same structured plan data.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section id="target-flow">
+        <h2>Target planning flow</h2>
+        <p>
+          “Deep detail” should be earned by evidence. The plan should become
+          more specific as the agent inspects the repository and resolves
+          material decisions—not by inventing implementation details upfront.
+        </p>
+        <figure>
+          <div class="diagram-wrap">
+            <svg
+              viewBox="0 0 1120 290"
+              role="img"
+              aria-labelledby="flow-title flow-desc"
+            >
+              <title id="flow-title">Proposed gated planning lifecycle</title>
+              <desc id="flow-desc">
+                A flow from orient to inspect, clarify, decide and design,
+                decompose, audit, then publish. A loop from clarify returns to
+                inspect when an answer reveals new repository facts. Publication
+                is blocked by material unresolved uncertainty.
+              </desc>
+              <defs>
+                <marker
+                  id="arrow"
+                  viewBox="0 0 10 10"
+                  refX="8"
+                  refY="5"
+                  markerWidth="7"
+                  markerHeight="7"
+                  orient="auto-start-reverse"
+                >
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="#526078" />
+                </marker>
+                <marker
+                  id="arrow-amber"
+                  viewBox="0 0 10 10"
+                  refX="8"
+                  refY="5"
+                  markerWidth="7"
+                  markerHeight="7"
+                  orient="auto-start-reverse"
+                >
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="#9a5a00" />
+                </marker>
+              </defs>
+              <path class="arrow" d="M 156 98 L 210 98" />
+              <path class="arrow" d="M 316 98 L 370 98" />
+              <path class="arrow" d="M 476 98 L 530 98" />
+              <path class="arrow" d="M 636 98 L 690 98" />
+              <path class="arrow" d="M 796 98 L 850 98" />
+              <path class="arrow" d="M 956 98 L 1010 98" />
+              <path
+                class="arrow-dashed"
+                d="M 423 148 C 423 226, 263 226, 263 148"
+              />
+              <rect
+                class="flow-node"
+                x="50"
+                y="52"
+                rx="12"
+                width="106"
+                height="92"
+              />
+              <text class="flow-label" x="103" y="87">1. Orient</text>
+              <text class="flow-sub" x="103" y="111">goal · outcome</text>
+              <text class="flow-sub" x="103" y="127">scope · non-goals</text>
+              <rect
+                class="flow-node focus"
+                x="210"
+                y="52"
+                rx="12"
+                width="106"
+                height="92"
+              />
+              <text class="flow-label" x="263" y="87">2. Inspect</text>
+              <text class="flow-sub" x="263" y="111">code · tests</text>
+              <text class="flow-sub" x="263" y="127">instructions · seams</text>
+              <rect
+                class="flow-node focus"
+                x="370"
+                y="52"
+                rx="12"
+                width="106"
+                height="92"
+              />
+              <text class="flow-label" x="423" y="87">3. Clarify</text>
+              <text class="flow-sub" x="423" y="111">material decisions</text>
+              <text class="flow-sub" x="423" y="127">frontier only</text>
+              <rect
+                class="flow-node"
+                x="530"
+                y="52"
+                rx="12"
+                width="106"
+                height="92"
+              />
+              <text class="flow-label" x="583" y="87">4. Design</text>
+              <text class="flow-sub" x="583" y="111">contracts · data</text>
+              <text class="flow-sub" x="583" y="127">trade-offs · risks</text>
+              <rect
+                class="flow-node"
+                x="690"
+                y="52"
+                rx="12"
+                width="106"
+                height="92"
+              />
+              <text class="flow-label" x="743" y="87">5. Decompose</text>
+              <text class="flow-sub" x="743" y="111">vertical slices</text>
+              <text class="flow-sub" x="743" y="127">dependencies</text>
+              <rect
+                class="flow-node focus"
+                x="850"
+                y="52"
+                rx="12"
+                width="106"
+                height="92"
+              />
+              <text class="flow-label" x="903" y="87">6. Audit</text>
+              <text class="flow-sub" x="903" y="111">coverage · conflicts</text>
+              <text class="flow-sub" x="903" y="127">
+                validation feasibility
+              </text>
+              <rect
+                class="flow-node gate"
+                x="1010"
+                y="52"
+                rx="12"
+                width="76"
+                height="92"
+              />
+              <text class="flow-label" x="1048" y="87">7.</text>
+              <text class="flow-label" x="1048" y="106">Publish</text>
+              <text class="flow-sub" x="1048" y="127">or block</text>
+              <text
+                x="343"
+                y="245"
+                fill="#9a5a00"
+                font-family="ui-sans-serif, system-ui, sans-serif"
+                font-size="12"
+                text-anchor="middle"
+              >
+                New evidence or a revealed dependency: revisit inspection; do
+                not speculate downstream work.
+              </text>
+            </svg>
+          </div>
+          <figcaption>
+            The planning lifecycle is a gate, not a linear form. Only material
+            uncertainty blocks publication; lower-impact unknowns can be
+            deferred with an owner, trigger, and fallback.
+          </figcaption>
+        </figure>
+        <div class="grid-2">
+          <div>
+            <h3>Wayfinding adaptation</h3>
+            <ul>
+              <li>
+                Maintain an internal ledger of <strong>known</strong>,
+                <strong>decided</strong>, <strong>unknown</strong>,
+                <strong>deferred due to dependency</strong>, and
+                <strong>out of scope</strong>.
+              </li>
+              <li>
+                Ask a question only when the answer can change architecture,
+                public behavior, data handling, validation, compliance, or
+                scope.
+              </li>
+              <li>
+                Ask for user decisions; inspect repository facts yourself.
+              </li>
+              <li>
+                Recompute the frontier after each answer instead of continuing
+                stale, speculative questions.
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h3>Grilling adaptation</h3>
+            <ul>
+              <li>
+                Use native Pi select/input UI, one material question at a time.
+              </li>
+              <li>
+                Offer 2–5 mutually exclusive options, a recommendation, why the
+                answer matters, and free text.
+              </li>
+              <li>
+                Provide an enforced “skip remaining questions; apply best
+                judgment” option.
+              </li>
+              <li>
+                When skipped, record consequential planner judgments as
+                <em>provisional decisions</em> or assumptions—not as invisible
+                reasoning.
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="gaps">
+        <h2>What needs to change in the current implementation</h2>
+        <p>
+          The current package has a sound baseline: planning-only prompt
+          boundaries, detailed What/Why/How fields, cycle checks, safe HTML
+          escaping, atomic writes, embedded Markdown, and explicit execution
+          approval. The following gaps prevent a stronger claim that every
+          result is implementation-ready.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Priority</th>
+                <th>Gap</th>
+                <th>Impact</th>
+                <th>Smallest credible change</th>
+                <th>Primary files</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="priority p0">P0</span></td>
+                <td>
+                  Approved artifact identity is not verified at execution.
+                </td>
+                <td>
+                  A changed or overwritten same-slug HTML plan can be executed
+                  without proving it matches the approved candidate.
+                </td>
+                <td>
+                  Retain candidate digest in conversation context; embed and
+                  verify Markdown payload hash and candidate digest before
+                  no-argument execution.
+                </td>
+                <td>
+                  <code>extensions/planning/index.ts</code>,
+                  <code>artifact.ts</code>, execution tests
+                </td>
+              </tr>
+              <tr>
+                <td><span class="priority p1">P1</span></td>
+                <td>Settled decisions disappear after wayfinding.</td>
+                <td>
+                  User choices, rejected alternatives, and rationale are absent
+                  from canonical Markdown used by <code>/execute-plan</code>.
+                </td>
+                <td>
+                  Add structured <code>decisions[]</code>; render it in HTML and
+                  Markdown; require provenance and rationale.
+                </td>
+                <td>
+                  <code>schema.ts</code>, <code>artifact.ts</code>,
+                  <code>prompts/plan.md</code>
+                </td>
+              </tr>
+              <tr>
+                <td><span class="priority p1">P1</span></td>
+                <td>Task/subtask dependency meaning is contradictory.</td>
+                <td>
+                  HTML and Markdown can express different predecessor
+                  relationships; parents and children overlap as executable
+                  work.
+                </td>
+                <td>
+                  Choose one explicit model: phase-container tasks with
+                  executable subtasks, or executable tasks with non-executable
+                  decomposition notes. Render only stored dependencies.
+                </td>
+                <td>
+                  <code>schema.ts</code>, <code>artifact.ts</code>, fixtures
+                </td>
+              </tr>
+              <tr>
+                <td><span class="priority p1">P1</span></td>
+                <td>
+                  Plan quality is checked mostly for shape, not readiness.
+                </td>
+                <td>
+                  Generic prose, ungrounded findings, unexplained “N/A”, and
+                  untested acceptance criteria can still publish.
+                </td>
+                <td>
+                  Add traceability IDs and validation rules; first strengthen
+                  the prompt rubric, then reject empty evidence and uncovered
+                  criteria.
+                </td>
+                <td>
+                  <code>prompts/plan.md</code>, <code>schema.ts</code>, tests
+                </td>
+              </tr>
+              <tr>
+                <td><span class="priority p1">P1</span></td>
+                <td>
+                  The promised skip-all question choice is not tool-enforced.
+                </td>
+                <td>
+                  A model can omit the user’s exit path from clarification.
+                </td>
+                <td>
+                  Append a reserved option automatically and return structured
+                  <code>skipRemaining</code>; reject duplicate options.
+                </td>
+                <td>
+                  <code>extensions/planning/index.ts</code>, integration tests
+                </td>
+              </tr>
+              <tr>
+                <td><span class="priority p2">P2</span></td>
+                <td>The rendered plan is less navigable than it should be.</td>
+                <td>
+                  Long plans lack a task index, dependency overview,
+                  paragraph-preserving task detail, and Markdown/HTML parity for
+                  all fields.
+                </td>
+                <td>
+                  Add stable anchors, table of contents, task index, explicit
+                  empty states, multiline-safe prose, and a generated dependency
+                  table/map.
+                </td>
+                <td><code>artifact.ts</code>, artifact tests</td>
+              </tr>
+              <tr>
+                <td><span class="priority p2">P2</span></td>
+                <td>Runtime Mermaid is network-dependent.</td>
+                <td>
+                  The file is not truly offline and its diagram is a separately
+                  authored representation that can drift from task data.
+                </td>
+                <td>
+                  Replace runtime Mermaid with a renderer-generated task
+                  dependency projection; retain text alternatives and optionally
+                  allow Mermaid only as publish-time input later.
+                </td>
+                <td><code>artifact.ts</code>, <code>README.md</code>, tests</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="data-model">
+        <h2>Use a traceable plan data model</h2>
+        <p>
+          Do not merely add longer strings. Add small, linked structures that
+          make plan intent inspectable and support a deterministic coverage
+          audit.
+        </p>
+        <pre>
+REQ-01 ──satisfied by──▶ TASK-03 ──verified by──▶ VAL-05
+    │                         │
+    ├──accepted by──▶ AC-02   └──implements──▶ DEC-04
+    │
+    └──supported by──▶ EVID-07 (observed repository contract)</pre>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Entity</th>
+                <th>Minimum fields</th>
+                <th>Required links / rules</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Evidence</strong></td>
+                <td>
+                  ID, claim, source type (<code>repo</code>, <code>user</code>,
+                  <code>external</code>), source pointer, confidence, notes
+                </td>
+                <td>
+                  Existing file/module claims reference observed evidence.
+                  Proposed paths are labeled proposed.
+                </td>
+              </tr>
+              <tr>
+                <td><strong>Requirement</strong></td>
+                <td>
+                  <code>REQ-*</code>, observable statement, rationale, priority,
+                  evidence IDs
+                </td>
+                <td>Has at least one acceptance criterion.</td>
+              </tr>
+              <tr>
+                <td><strong>Acceptance criterion</strong></td>
+                <td>
+                  <code>AC-*</code>, requirement IDs,
+                  precondition/action/outcome, edge or failure case
+                </td>
+                <td>
+                  Has at least one validation method and expected evidence.
+                </td>
+              </tr>
+              <tr>
+                <td><strong>Decision</strong></td>
+                <td>
+                  <code>DEC-*</code>, context, choice, alternatives where
+                  consequential, rationale/evidence, consequences,
+                  reversibility, status
+                </td>
+                <td>
+                  Links affected requirements, modules, or tasks. A skipped
+                  interview decision is marked provisional.
+                </td>
+              </tr>
+              <tr>
+                <td><strong>Task</strong></td>
+                <td>
+                  <code>TASK-*</code>, What, Why, ordered How, verified/proposed
+                  files, dependencies, parallel safety, expected behavior
+                </td>
+                <td>
+                  Links a requirement/criterion or is explicitly foundational
+                  with downstream dependents.
+                </td>
+              </tr>
+              <tr>
+                <td><strong>Validation</strong></td>
+                <td>
+                  <code>VAL-*</code>, level, command/procedure, preconditions,
+                  expected output/evidence
+                </td>
+                <td>
+                  Covers one or more acceptance criteria. State manual procedure
+                  when no command exists.
+                </td>
+              </tr>
+              <tr>
+                <td><strong>Unknown / assumption</strong></td>
+                <td>
+                  statement, impact, status, owner, resolution point, fallback
+                </td>
+                <td>
+                  High-impact unknowns block publication; lower-impact ones need
+                  a trigger and fallback.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout info">
+          <strong
+            >Important constraint: do not create bureaucratic ceremony.</strong
+          >
+          <p>
+            Require alternatives and reversibility discussion only for
+            consequential architecture, data, security, public-contract, or
+            compliance choices. A routine decision that follows an established
+            repository pattern should cite the pattern and move on.
+          </p>
+        </div>
+      </section>
+
+      <section id="html-diagrams">
+        <h2>Make the HTML plan easy to read—and diagrams trustworthy</h2>
+        <p>
+          The recommended MVP is a
+          <strong>static, semantic, offline-first HTML file</strong>. The
+          renderer should generate all visual representations from the same
+          validated plan view model that produces task cards and canonical
+          Markdown.
+        </p>
+        <div class="grid-2">
+          <article class="card">
+            <span class="tag green">Recommended MVP</span>
+            <h3>Inline SVG dependency map + visible HTML table</h3>
+            <ul>
+              <li>
+                Generate a bounded task DAG from <code>tasks[].dependsOn</code>.
+              </li>
+              <li>
+                Use deterministic topological layers, safe text labels, and
+                stable anchors.
+              </li>
+              <li>
+                Place a visible dependency table directly below it: task ID,
+                title, predecessors, downstream work, execution order.
+              </li>
+              <li>
+                Keep SVG decorative (<code>aria-hidden</code>) when the adjacent
+                table completely expresses it, or expose one concise SVG
+                name/description—not both verbose representations.
+              </li>
+              <li>Fall back to table-only for cycles or oversized graphs.</li>
+            </ul>
+          </article>
+          <article class="card">
+            <span class="tag amber">Avoid at runtime</span>
+            <h3>Browser-loaded Mermaid and arbitrary rich SVG</h3>
+            <ul>
+              <li>
+                A CDN module makes a local file network-dependent and increases
+                executable attack surface.
+              </li>
+              <li>
+                Free-form Mermaid is a second, drifting source of truth unless
+                it is derived from structured data.
+              </li>
+              <li>
+                Do not inject user-authored markup, <code>foreignObject</code>,
+                event handlers, styles, URLs, or raw third-party SVG into the
+                artifact.
+              </li>
+              <li>
+                Graphviz or Mermaid can become optional
+                <em>publish-time</em> layout adapters later, emitting only
+                audited static SVG plus a text equivalent.
+              </li>
+            </ul>
+          </article>
+        </div>
+        <h3>Renderer architecture</h3>
+        <pre>
+validated PlanDraft
+        │
+        ▼
+normalizePlanView(plan)
+        ├──▶ HTML sections, table of contents, task cards
+        ├──▶ canonical Markdown for execution
+        ├──▶ buildTaskGraph → layoutTaskGraph → inline SVG
+        ├──▶ dependency relationship table
+        └──▶ traceability matrix (later)
+</pre>
+        <h3>Accessibility and print baseline</h3>
+        <ul class="checklist">
+          <li>
+            One descriptive <code>h1</code>, nested headings, stable
+            section/task anchors, and a linked table of contents.
+          </li>
+          <li>
+            Required content remains visible; do not hide acceptance criteria,
+            risks, tasks, or the only text alternative in
+            <code>&lt;details&gt;</code>.
+          </li>
+          <li>
+            Use system fonts, readable line length, keyboard-visible focus, AA
+            text contrast, and meaning that does not depend on color.
+          </li>
+          <li>
+            Allow horizontal scrolling only inside a two-dimensional diagram
+            wrapper; prose remains responsive at narrow widths.
+          </li>
+          <li>
+            Add <code>@media print</code> and <code>@page</code> rules; test A4
+            and Letter PDF output in Chromium, Firefox, and Safari.
+          </li>
+          <li>
+            Use a restrictive file-friendly CSP and context-appropriate
+            escaping. CSP is defense in depth, not a replacement for escaping.
+          </li>
+        </ul>
+      </section>
+
+      <section id="roadmap">
+        <h2>Delivery roadmap</h2>
+        <div class="cards">
+          <article class="card">
+            <span class="tag">Phase 0 · integrity</span>
+            <h3>Prevent executing the wrong plan</h3>
+            <p>
+              <span class="priority p0">P0</span> Retain the published candidate
+              digest; verify artifact metadata and embedded Markdown hash before
+              implicit approval/execution. Add tamper and same-slug replacement
+              tests.
+            </p>
+          </article>
+          <article class="card">
+            <span class="tag">Phase 1 · planning truth</span>
+            <h3>Preserve decisions and remove ambiguity</h3>
+            <p>
+              <span class="priority p1">P1</span> Add decisions/provenance,
+              enforce skip-all, choose unambiguous task hierarchy semantics, and
+              render stored dependencies consistently in HTML and Markdown.
+            </p>
+          </article>
+          <article class="card">
+            <span class="tag">Phase 2 · readiness</span>
+            <h3>Trace requirements to proof</h3>
+            <p>
+              <span class="priority p1">P1</span> Add requirement, acceptance,
+              validation, and evidence links plus a pre-publication coverage
+              report. Make empty evidence, unexplained N/A, and orphaned
+              criteria fail validation.
+            </p>
+          </article>
+          <article class="card">
+            <span class="tag">Phase 3 · reading experience</span>
+            <h3>Replace runtime visualization</h3>
+            <p>
+              <span class="priority p2">P2</span> Build the renderer-owned task
+              graph, relationship table, anchors, task index, empty states,
+              paragraph-preserving fields, print CSS, and offline artifact
+              tests.
+            </p>
+          </article>
+          <article class="card">
+            <span class="tag">Phase 4 · advanced planning</span>
+            <h3>Typed architecture and traceability views</h3>
+            <p>
+              <span class="priority p3">P3</span> Introduce a typed architecture
+              graph and optional, publish-time Mermaid/Graphviz adapters only
+              after the MVP proves useful on real plans.
+            </p>
+          </article>
+        </div>
+        <div class="callout warning">
+          <strong>Do not start with a general-purpose diagram engine.</strong>
+          <p>
+            First deliver a simple dependency map that is completely generated
+            from existing task data. It will solve navigation and ordering now,
+            prove the projection architecture, and avoid making arbitrary
+            diagrams a new security and maintenance surface.
+          </p>
+        </div>
+      </section>
+
+      <section id="quality-gates">
+        <h2>Publish quality gates</h2>
+        <p>
+          Before <code>plan_publish</code> creates an artifact, run this audit
+          and show its results inside the final plan.
+        </p>
+        <div class="grid-2">
+          <div>
+            <h3>Block publication when</h3>
+            <ul>
+              <li>
+                A correctness-, contract-, data-loss-, compliance-, or
+                acceptance-changing question remains unresolved without explicit
+                user approval to defer it.
+              </li>
+              <li>
+                A requirement has no acceptance criterion, an acceptance
+                criterion has no validation, or a task has no reason for
+                existing.
+              </li>
+              <li>
+                Dependencies are invalid, cyclic, ambiguous, or differ between
+                HTML and canonical Markdown.
+              </li>
+              <li>
+                Repository-specific claims use unverified paths, symbols,
+                commands, line numbers, or target numbers.
+              </li>
+              <li>
+                Findings/evidence are empty, engineering “N/A” lacks rationale,
+                or a task uses placeholder/generic implementation prose.
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h3>Require each task to state</h3>
+            <ul>
+              <li>
+                <strong>What:</strong> the behavioral or structural result.
+              </li>
+              <li>
+                <strong>Why:</strong> requirement, decision, risk, or existing
+                contract it serves.
+              </li>
+              <li>
+                <strong>How:</strong> ordered edits, interfaces/data/error
+                behavior, compatibility impact, and test changes.
+              </li>
+              <li>
+                <strong>Where:</strong> observed existing modules vs clearly
+                proposed new modules.
+              </li>
+              <li>
+                <strong>Proof:</strong> validation command/procedure,
+                preconditions, expected signal, and acceptance IDs covered.
+              </li>
+            </ul>
+          </div>
+        </div>
+        <h3>Suggested plan-quality fixtures</h3>
+        <ol>
+          <li>
+            A small localized bug fix: prove the format does not over-engineer
+            straightforward work.
+          </li>
+          <li>
+            A brownfield feature with data migration: verify decisions,
+            rollout/rollback, compatibility, and end-to-end validation.
+          </li>
+          <li>
+            A greenfield feature with real fog: prove the plan represents
+            uncertainty honestly instead of inventing future tasks.
+          </li>
+          <li>
+            Adversarial fixtures: nonexistent paths/commands, vague but long How
+            text, circular dependencies, orphaned acceptance criteria, tampered
+            HTML, and malicious diagram labels.
+          </li>
+        </ol>
+      </section>
+
+      <section id="sources">
+        <h2>Evidence and source notes</h2>
+        <p class="small">
+          The recommendations combine a read-only audit of this repository with
+          the primary sources below. “Wayfinding” and “grilling” are adapted
+          concepts; Pi should keep them internal to its single-session planning
+          workflow, not reproduce Matt Pocock’s multi-session issue-map process.
+        </p>
+        <ul class="sources">
+          <li>
+            <a href="https://code.claude.com/docs/en/best-practices"
+              >Anthropic — Claude Code best practices</a
+            >: explore, plan, code, and use executable verification.
+          </li>
+          <li>
+            <a
+              href="https://www.anthropic.com/engineering/building-effective-agents"
+              >Anthropic — Building Effective AI Agents</a
+            >: use transparent plans, environmental ground truth, and the
+            simplest workable system.
+          </li>
+          <li>
+            <a href="https://github.com/github/spec-kit">GitHub Spec Kit</a> and
+            its specification, clarification, task, and analysis templates:
+            staged specification, requirements/acceptance traceability,
+            clarification, and consistency checks.
+          </li>
+          <li>
+            <a
+              href="https://docs.github.com/en/copilot/using-github-copilot/using-copilot-coding-agent-to-work-on-tasks/best-practices-for-using-copilot-to-work-on-tasks"
+              >GitHub Copilot task best practices</a
+            >: clear task context, acceptance criteria, and relevant file
+            directions.
+          </li>
+          <li>
+            <a href="https://github.com/mattpocock/skills">Matt Pocock skills</a
+            >—especially
+            <a
+              href="https://github.com/mattpocock/skills/blob/main/skills/engineering/wayfinder/SKILL.md"
+              >wayfinder</a
+            >,
+            <a
+              href="https://github.com/mattpocock/skills/blob/main/skills/productivity/grilling/SKILL.md"
+              >grilling</a
+            >,
+            <a
+              href="https://github.com/mattpocock/skills/blob/main/skills/engineering/to-spec/SKILL.md"
+              >to-spec</a
+            >, and
+            <a
+              href="https://github.com/mattpocock/skills/blob/main/skills/engineering/to-tickets/SKILL.md"
+              >to-tickets</a
+            >.
+          </li>
+          <li>
+            <a
+              href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP"
+              >MDN Content Security Policy</a
+            >
+            and
+            <a
+              href="https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html"
+              >OWASP XSS Prevention Cheat Sheet</a
+            >: strict resource controls and contextual output encoding.
+          </li>
+          <li>
+            <a href="https://www.w3.org/TR/WCAG22/">WCAG 2.2</a>,
+            <a href="https://www.w3.org/TR/SVG/access.html"
+              >W3C SVG accessibility guidance</a
+            >, and
+            <a
+              href="https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Media_queries/Printing"
+              >MDN printing guidance</a
+            >: semantic hierarchy, text alternatives, reflow, contrast, and
+            print behavior.
+          </li>
+        </ul>
+        <div class="callout info">
+          <strong>Terminology correction</strong>
+          <p>
+            No standalone Matt Pocock “diagram drawer” skill was verified in the
+            current public skills repository. The recommended approach is
+            therefore an internal renderer capability: a bounded diagram
+            projection derived from validated plan data, not a dependency on a
+            named external skill.
+          </p>
+        </div>
+      </section>
+
+      <footer class="footer">
+        Prepared from the current implementation audit, planning-method
+        research, and HTML/diagram accessibility research. This is a
+        recommendation artifact; it does not modify the package implementation.
+      </footer>
+    </main>
+  </body>
+</html>

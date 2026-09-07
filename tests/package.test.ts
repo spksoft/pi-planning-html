@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-test("/plan contains its internal wayfinding workflow without exposing a skill", async () => {
+test("/plan contains its internal wayfinding and implementation-readiness contract without exposing a skill", async () => {
   const packagePath = fileURLToPath(
     new URL("../package.json", import.meta.url),
   );
@@ -22,28 +22,33 @@ test("/plan contains its internal wayfinding workflow without exposing a skill",
   assert.match(prompt, /single-session adaptation of Wayfinder/i);
   assert.match(
     prompt,
-    /part of `\/plan`, not a separately exposed skill or issue-tracker workflow/,
+    /part of `\/plan`, not a separately exposed skill or issue-tracker workflow/i,
   );
-  assert.match(prompt, /Name the destination first/);
   assert.match(prompt, /Decisions so far/);
   assert.match(prompt, /Fog/);
   assert.match(prompt, /Frontier/);
   assert.match(prompt, /Out of scope/);
-  assert.match(prompt, /Every frontier item must read as a question/);
-  assert.match(prompt, /`grilling` \(HITL\)/);
-  assert.match(prompt, /`prototype` \(HITL\)/);
-  assert.match(prompt, /`research` \(AFK\)/);
-  assert.match(prompt, /`task` \(AFK or HITL\)/);
   assert.match(
     prompt,
-    /Ask one currently unblocked `grilling` question at a time/,
+    /Ask one currently unblocked `grilling` question at a time/i,
   );
-  assert.match(prompt, /recompute the map before asking another/);
+  assert.match(prompt, /recompute the map before asking another/i);
   assert.match(
     prompt,
-    /Skip all remaining questions and apply your best judgment/,
+    /Skip all remaining questions and apply your best judgment/i,
   );
-  assert.match(prompt, /at least four concrete choices/i);
-  assert.match(prompt, /always adds a free-text answer choice/i);
+  assert.match(
+    prompt,
+    /`plan_question` always adds free text and the reserved/i,
+  );
   assert.match(prompt, /do not create tracker issues, local map files/i);
+  assert.match(prompt, /\*\*Requirements\*\* \(`REQ-\*`\)/i);
+  assert.match(prompt, /\*\*Acceptance criteria\*\* \(`AC-\*`\)/i);
+  assert.match(prompt, /\*\*Decisions\*\* \(`DEC-\*`\)/i);
+  assert.match(prompt, /\*\*Validations\*\* \(`VAL-\*`\)/i);
+  assert.match(prompt, /Pre-publication coverage audit/i);
+  assert.match(
+    prompt,
+    /Do not supply Mermaid, raw SVG, HTML, or a freehand diagram/i,
+  );
 });
