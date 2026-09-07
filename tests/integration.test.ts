@@ -131,6 +131,20 @@ test("plan_question enforces unique choices, reserved skip behavior, and native 
     /reserved skip/i,
   );
 
+  harness.queueSelect("English (default)");
+  const languageSelection = await harness.callTool("plan_question", {
+    question: "Where should the user enable passkeys?",
+    options,
+  });
+  assert.equal(
+    (languageSelection.details as { kind: string; language: string }).kind,
+    "language-selection",
+  );
+  assert.equal(
+    (languageSelection.details as { language: string }).language,
+    "English",
+  );
+
   harness.queueSelect(
     "Skip all remaining questions and apply your best judgment",
   );
@@ -157,7 +171,38 @@ test("plan_question enforces unique choices, reserved skip behavior, and native 
   );
   assert.equal((answer.details as { kind: string }).kind, "free-text");
 
+  const thai = await bootstrap();
+  thai.harness.queueSelect("Other language…");
+  thai.harness.queueInput("Thai");
+  const thaiLanguage = await thai.harness.callTool("plan_question", {
+    question: "Where should the user enable passkeys?",
+    options,
+  });
+  assert.equal((thaiLanguage.details as { language: string }).language, "Thai");
+  assert.match(thaiLanguage.content[0]!.text, /Reissue this question.*Thai/i);
+  thai.harness.queueSelect(
+    "Skip all remaining questions and apply your best judgment",
+  );
+  const thaiQuestion = await thai.harness.callTool("plan_question", {
+    question: "ผู้ใช้ควรเปิดใช้พาสคีย์ที่ใด?",
+    options: [
+      "ระหว่างลงชื่อเข้าใช้",
+      "ในการตั้งค่าบัญชี",
+      "หลังการกู้คืนบัญชี",
+      "ในขั้นตอนเริ่มต้นใช้งาน",
+    ],
+  });
+  assert.equal((thaiQuestion.details as { language: string }).language, "Thai");
+
   const noUi = await bootstrap({ hasUI: false });
+  const defaultLanguage = await noUi.harness.callTool("plan_question", {
+    question: "Which rollout should this plan use?",
+    options,
+  });
+  assert.equal(
+    (defaultLanguage.details as { language: string }).language,
+    "English",
+  );
   const unavailable = await noUi.harness.callTool("plan_question", {
     question: "Which rollout should this plan use?",
     options,

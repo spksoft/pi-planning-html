@@ -4,6 +4,7 @@ import {
   withFileMutationQueue,
   type ExtensionAPI,
   type ExtensionCommandContext,
+  type ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { readFile, realpath } from "node:fs/promises";
 import { isAbsolute, relative, resolve, sep } from "node:path";
@@ -30,6 +31,9 @@ const MINIMUM_QUESTION_OPTIONS = 4;
 const MAXIMUM_QUESTION_OPTIONS = 5;
 const SKIP_REMAINING_CHOICE =
   "Skip all remaining questions and apply your best judgment";
+const DEFAULT_QUESTION_LANGUAGE = "English";
+const ENGLISH_LANGUAGE_CHOICE = "English (default)";
+const OTHER_LANGUAGE_CHOICE = "Other language…";
 const ID = Type.String({ minLength: 1, maxLength: 128 });
 const TEXT = Type.String({ minLength: 1 });
 
@@ -219,6 +223,11 @@ function normalizedChoice(value: string): string {
   return value.trim().toLocaleLowerCase();
 }
 
+function normalizedLanguage(value: string | undefined): string {
+  const language = value?.trim().replace(/\s+/g, " ") ?? "";
+  return language.slice(0, 80) || DEFAULT_QUESTION_LANGUAGE;
+}
+
 function freeTextChoice(options: string[]): string {
   const base = "Other answer…";
   let candidate = base;
@@ -248,6 +257,33 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isSha256(value: unknown): value is string {
   return typeof value === "string" && /^[a-f0-9]{64}$/i.test(value);
+}
+
+/** Returns the language chosen by the user for this active planning branch. */
+function planQuestionLanguageFromContext(
+  ctx: ExtensionContext,
+): string | undefined {
+  const entries = ctx.sessionManager.getBranch();
+  for (let index = entries.length - 1; index >= 0; index -= 1) {
+    const entry = entries[index];
+    if (
+      !isRecord(entry) ||
+      entry.type !== "message" ||
+      !isRecord(entry.message)
+    )
+      continue;
+    const message = entry.message;
+    if (
+      message.role !== "toolResult" ||
+      message.toolName !== "plan_question" ||
+      !isRecord(message.details)
+    )
+      continue;
+    const language = message.details.language;
+    if (typeof language === "string" && language.trim())
+      return normalizedLanguage(language);
+  }
+  return undefined;
 }
 
 /** Returns the most recently published v2 plan on the active conversation branch. */
@@ -384,13 +420,43 @@ export default function planningExtension(pi: ExtensionAPI): void {
           "Do not supply the reserved skip-remaining choice; plan_question adds it automatically.",
         );
       }
+      const selectedLanguage = planQuestionLanguageFromContext(ctx);
+      if (!selectedLanguage) {
+        let language = DEFAULT_QUESTION_LANGUAGE;
+        if (ctx.hasUI) {
+          const languageChoice = await ctx.ui.select(
+            "What language do you prefer for planning questions?",
+            [ENGLISH_LANGUAGE_CHOICE, OTHER_LANGUAGE_CHOICE],
+          );
+          if (languageChoice === OTHER_LANGUAGE_CHOICE) {
+            language = normalizedLanguage(
+              await ctx.ui.input(
+                "Preferred planning-question language",
+                "For example: Thai",
+              ),
+            );
+          }
+        }
+        return result(
+          `Planning-question language set to ${language}. Reissue this question and all remaining planning questions in ${language}.`,
+          {
+            language,
+            languageSelected: true,
+            answer: null,
+            kind: "language-selection",
+            skipRemaining: false,
+          },
+        );
+      }
+      const language = selectedLanguage;
       if (!ctx.hasUI) {
         return result(
-          `Interactive UI is unavailable. Ask this material question in the conversation instead: ${params.question}`,
+          `Interactive UI is unavailable. Ask this material question in ${language} in the conversation instead: ${params.question}`,
           {
             question: params.question,
             answer: null,
             kind: "unavailable",
+            language,
             skipRemaining: false,
           },
         );
@@ -403,6 +469,7 @@ export default function planningExtension(pi: ExtensionAPI): void {
           question: params.question,
           answer: null,
           kind: "cancelled",
+          language,
           skipRemaining: false,
         });
       if (selected === SKIP_REMAINING_CHOICE) {
@@ -412,6 +479,7 @@ export default function planningExtension(pi: ExtensionAPI): void {
             question: params.question,
             answer: selected,
             kind: "skip-remaining",
+            language,
             skipRemaining: true,
           },
         );
@@ -421,6 +489,7 @@ export default function planningExtension(pi: ExtensionAPI): void {
           question: params.question,
           answer: selected,
           kind: "option",
+          language,
           skipRemaining: false,
         });
       const answer = await ctx.ui.input(
@@ -435,6 +504,7 @@ export default function planningExtension(pi: ExtensionAPI): void {
           question: params.question,
           answer: answer?.trim() || null,
           kind: answer?.trim() ? "free-text" : "cancelled",
+          language,
           skipRemaining: false,
         },
       );

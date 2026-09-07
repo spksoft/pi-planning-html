@@ -30,6 +30,15 @@ test("/plan contains its internal wayfinding and implementation-readiness contra
   assert.match(prompt, /Out of scope/);
   assert.match(
     prompt,
+    /first `plan_question` call opens a native language selector/i,
+  );
+  assert.match(prompt, /English \(default\).*free-text language option/i);
+  assert.match(
+    prompt,
+    /reissue that question and every later question.*selected language/i,
+  );
+  assert.match(
+    prompt,
     /Ask one currently unblocked `grilling` question at a time/i,
   );
   assert.match(prompt, /recompute the map before asking another/i);
