@@ -9,12 +9,15 @@ import {
 import { readFile, realpath } from "node:fs/promises";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import {
+  captureRepositorySnapshot,
+  compareRepositorySnapshot,
   createCandidate,
   hashText,
   markdownPathForPlan,
-  readPlanMarkdown,
+  verifyPlanArtifact,
   writeExtractedMarkdown,
   writePlanArtifact,
+  type RepositorySnapshot,
 } from "./artifact.ts";
 import { loadPlanningConfig } from "./config.ts";
 import {
@@ -42,6 +45,7 @@ const EvidenceSchema = Type.Object({
   claim: TEXT,
   sourceType: StringEnum(EVIDENCE_SOURCE_TYPES),
   source: TEXT,
+  seams: Type.Optional(Type.Array(TEXT, { minItems: 1 })),
   confidence: StringEnum(["low", "medium", "high"] as const),
   notes: TEXT,
 });
@@ -80,6 +84,11 @@ const PlanTaskSchema = Type.Intersect([
 const PlanDraftSchema = Type.Object({
   title: Type.String({ minLength: 4 }),
   slug: Type.String({ minLength: 1 }),
+  language: Type.String({
+    minLength: 2,
+    maxLength: 35,
+    pattern: "^[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{2,8})*$",
+  }),
   summary: TEXT,
   outcome: TEXT,
   repositoryEvidence: Type.Array(EvidenceSchema),
@@ -211,6 +220,17 @@ interface PublishedPlanReference {
   contentHash: string;
 }
 
+interface ResolvedPlanFile {
+  absolutePath: string;
+  relativePath: string;
+}
+
+interface ExecutionPlan {
+  plan: ResolvedPlanFile;
+  markdown: string;
+  snapshot?: RepositorySnapshot;
+}
+
 function result(text: string, details: Record<string, unknown> = {}) {
   return { content: [{ type: "text" as const, text }], details };
 }
@@ -325,7 +345,7 @@ async function resolvePlanFile(
   cwd: string,
   value: string,
   artifactDirectory: string,
-): Promise<{ absolutePath: string; relativePath: string }> {
+): Promise<ResolvedPlanFile> {
   const original = normalizeUserPath(value);
   if (!original)
     throw new Error(`Specify a planning file, for example ${PLAN_FILE_HINT}.`);
@@ -363,17 +383,116 @@ function executionPrompt(
   htmlPath: string,
   markdownPath: string,
   hasSubagent: boolean,
+  staleSnapshotWarning?: string,
 ): string {
   const delegation = hasSubagent
     ? "Use the active subagent tool only for dependency-independent, well-bounded implementation tasks; keep integration, validation, and final decisions in this session."
     : "No subagent tool is active, so implement the dependency-ordered tasks directly in this session.";
+  const snapshotWarning = staleSnapshotWarning
+    ? `\n\nRepository snapshot warning: ${staleSnapshotWarning} Reinspect affected seams before editing.`
+    : "";
   return `The user explicitly approved this plan by running /execute-plan. Implement the plan extracted from ${htmlPath}.
 
-The canonical execution brief is now available at ${markdownPath}. Before editing, reread the project instructions and verify that the named source seams, observed evidence, assumptions, and constraints still match the current repository. If a verified seam has changed, report the deviation and update the implementation approach deliberately rather than blindly following stale paths.
+The canonical execution brief is now available at ${markdownPath}. Before editing, reread the project instructions and verify that the named source seams, observed evidence, assumptions, and constraints still match the current repository. If a verified seam has changed, report the deviation and update the implementation approach deliberately rather than blindly following stale paths.${snapshotWarning}
 
 Read the brief, implement tasks in dependency order, preserve stated constraints, and produce the validation evidence named by each task and acceptance criterion. Run the end-to-end validation gate before reporting completion. Report deviations, unresolved unknowns, or blockers clearly.
 
 ${delegation}`;
+}
+
+async function loadExecutionPlan(
+  ctx: ExtensionCommandContext,
+  requested: string,
+  reference: PublishedPlanReference | undefined,
+): Promise<ExecutionPlan> {
+  const config = await loadPlanningConfig(ctx.cwd);
+  const plan = await resolvePlanFile(
+    ctx.cwd,
+    requested,
+    config.artifactDirectory,
+  );
+  if (reference && plan.relativePath !== reference.artifact) {
+    throw new Error(
+      "The plan path no longer matches the artifact approved in this conversation.",
+    );
+  }
+  const html = await readFile(plan.absolutePath, "utf8");
+  if (reference && hashText(html) !== reference.contentHash) {
+    throw new Error(
+      "The HTML plan changed after publication; republish it or approve this exact file explicitly.",
+    );
+  }
+  const verified = verifyPlanArtifact(html, reference?.candidateDigest);
+  if (reference && hashText(verified.markdown) !== reference.markdownHash) {
+    throw new Error(
+      "The embedded plan Markdown changed after publication; republish it or approve this exact file explicitly.",
+    );
+  }
+  return verified.snapshot
+    ? { plan, markdown: verified.markdown, snapshot: verified.snapshot }
+    : { plan, markdown: verified.markdown };
+}
+
+async function snapshotWarning(
+  cwd: string,
+  snapshot: RepositorySnapshot | undefined,
+): Promise<string | undefined> {
+  if (!snapshot) return undefined;
+  const comparison = await compareRepositorySnapshot(cwd, snapshot);
+  const changes = [
+    ...(comparison.gitHeadChanged ? ["Git commit changed"] : []),
+    ...comparison.changedPaths.map((path) => `changed seam ${path}`),
+  ];
+  return changes.length > 0 ? changes.join("; ") : undefined;
+}
+
+async function startPlanImplementation(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  execution: ExecutionPlan,
+  staleSnapshotWarning: string | undefined,
+): Promise<void> {
+  const markdownPath = markdownPathForPlan(execution.plan.absolutePath);
+  await withFileMutationQueue(markdownPath, () =>
+    writeExtractedMarkdown(markdownPath, execution.markdown),
+  );
+  const projectRoot = await realpath(ctx.cwd);
+  const relativeMarkdownPath = relative(projectRoot, markdownPath)
+    .split(sep)
+    .join("/");
+  const hasSubagent = pi.getActiveTools().includes("subagent");
+  ctx.ui.notify(
+    `Extracted ${execution.plan.relativePath} to ${relativeMarkdownPath}. Starting implementation.`,
+    "info",
+  );
+  pi.sendUserMessage(
+    executionPrompt(
+      execution.plan.relativePath,
+      relativeMarkdownPath,
+      hasSubagent,
+      staleSnapshotWarning,
+    ),
+  );
+}
+
+async function executePlan(
+  pi: ExtensionAPI,
+  ctx: ExtensionCommandContext,
+  requested: string,
+  reference: PublishedPlanReference | undefined,
+): Promise<void> {
+  const execution = await loadExecutionPlan(ctx, requested, reference);
+  const staleSnapshotWarning = await snapshotWarning(
+    ctx.cwd,
+    execution.snapshot,
+  );
+  if (staleSnapshotWarning) {
+    ctx.ui.notify(
+      `Plan snapshot differs from the current repository: ${staleSnapshotWarning}.`,
+      "warning",
+    );
+  }
+  await startPlanImplementation(pi, ctx, execution, staleSnapshotWarning);
 }
 
 export default function planningExtension(pi: ExtensionAPI): void {
@@ -527,7 +646,12 @@ export default function planningExtension(pi: ExtensionAPI): void {
           `Plan candidate rejected:\n- ${validation.errors.join("\n- ")}`,
         );
       const config = await loadPlanningConfig(ctx.cwd);
-      const candidate = createCandidate(draft);
+      const snapshot = await captureRepositorySnapshot(ctx.cwd, draft);
+      const candidate = createCandidate(
+        draft,
+        new Date().toISOString(),
+        snapshot,
+      );
       const target = resolve(
         ctx.cwd,
         config.artifactDirectory,
@@ -544,6 +668,7 @@ export default function planningExtension(pi: ExtensionAPI): void {
             candidateDigest: artifact.candidateDigest,
             markdownHash: artifact.markdownHash,
             contentHash: artifact.contentHash,
+            repositorySnapshot: candidate.snapshot,
             coverage: validation.coverage,
           },
         ),
@@ -566,48 +691,7 @@ export default function planningExtension(pi: ExtensionAPI): void {
         return;
       }
       try {
-        const config = await loadPlanningConfig(ctx.cwd);
-        const plan = await resolvePlanFile(
-          ctx.cwd,
-          requested,
-          config.artifactDirectory,
-        );
-        if (reference && plan.relativePath !== reference.artifact) {
-          throw new Error(
-            "The plan path no longer matches the artifact approved in this conversation.",
-          );
-        }
-        const html = await readFile(plan.absolutePath, "utf8");
-        if (reference && hashText(html) !== reference.contentHash) {
-          throw new Error(
-            "The HTML plan changed after publication; republish it or approve this exact file explicitly.",
-          );
-        }
-        const markdown = await readPlanMarkdown(
-          plan.absolutePath,
-          reference?.candidateDigest,
-        );
-        if (reference && hashText(markdown) !== reference.markdownHash) {
-          throw new Error(
-            "The embedded plan Markdown changed after publication; republish it or approve this exact file explicitly.",
-          );
-        }
-        const markdownPath = markdownPathForPlan(plan.absolutePath);
-        await withFileMutationQueue(markdownPath, () =>
-          writeExtractedMarkdown(markdownPath, markdown),
-        );
-        const projectRoot = await realpath(ctx.cwd);
-        const relativeMarkdownPath = relative(projectRoot, markdownPath)
-          .split(sep)
-          .join("/");
-        const hasSubagent = pi.getActiveTools().includes("subagent");
-        ctx.ui.notify(
-          `Extracted ${plan.relativePath} to ${relativeMarkdownPath}. Starting implementation.`,
-          "info",
-        );
-        pi.sendUserMessage(
-          executionPrompt(plan.relativePath, relativeMarkdownPath, hasSubagent),
-        );
+        await executePlan(pi, ctx, requested, reference);
       } catch (error) {
         ctx.ui.notify(
           error instanceof Error ? error.message : String(error),

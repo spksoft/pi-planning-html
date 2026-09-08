@@ -17,6 +17,12 @@ test("a complete traceable dependency-aware plan is accepted", () => {
   assert.equal(result.valid, true);
   assert.deepEqual(result.coverage.uncoveredRequirementIds, []);
   assert.deepEqual(result.coverage.uncoveredAcceptanceCriteriaIds, []);
+
+  const invalidLanguage = validDraft({ language: "English" });
+  assert.match(
+    validatePlanDraft(invalidLanguage).errors.join("\n"),
+    /BCP 47 language tag/i,
+  );
 });
 
 test("task dependency IDs are executable task order while subtasks are detailed decomposition", () => {
@@ -73,6 +79,20 @@ test("every task and subtask requires concrete What, Why, How, observed/proposed
   assert.match(
     validatePlanDraft(unsupportedObservedFile).errors.join("\n"),
     /cite evidence|need repository evidence/i,
+  );
+
+  const evidenceWithoutSeams = validDraft();
+  evidenceWithoutSeams.repositoryEvidence[0]!.seams = [];
+  assert.match(
+    validatePlanDraft(evidenceWithoutSeams).errors.join("\n"),
+    /needs unique project-relative seams|names observed file/i,
+  );
+
+  const mismatchedEvidenceSeam = validDraft();
+  mismatchedEvidenceSeam.repositoryEvidence[0]!.seams = ["src/auth/service.ts"];
+  assert.match(
+    validatePlanDraft(mismatchedEvidenceSeam).errors.join("\n"),
+    /names observed file/i,
   );
 
   for (const field of ["expectedBehavior", "parallelSafety"] as const) {
@@ -261,7 +281,14 @@ test("repository-seam auditing rejects nonexistent and escaping observed paths",
   missing.tasks[0]!.files[0]!.path = "src/auth/missing.ts";
   assert.match(
     (await auditPlanDraft(missing, cwd)).errors.join("\n"),
-    /was not found/i,
+    /was not found|names observed file/i,
+  );
+
+  const missingEvidenceSeam = validDraft();
+  missingEvidenceSeam.repositoryEvidence[0]!.seams = ["src/auth/missing.ts"];
+  assert.match(
+    (await auditPlanDraft(missingEvidenceSeam, cwd)).errors.join("\n"),
+    /was not found|names observed file/i,
   );
 
   const escaped = validDraft();

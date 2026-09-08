@@ -1,3 +1,4 @@
+import { execFile as execFileCallback } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import {
   lstat,
@@ -9,24 +10,38 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { isAbsolute, relative, resolve, sep } from "node:path";
+import { promisify } from "node:util";
 import {
   planCoverageReport,
   type ArchitectureEdge,
   type ArchitectureNode,
+  type PlanDraft,
 } from "./schema.ts";
 import type {
   PlanAcceptanceCriterion,
-  PlanDraft,
   PlanFileReference,
   PlanSubtask,
   PlanTask,
   PlanValidation,
 } from "./schema.ts";
 
+const execFile = promisify(execFileCallback);
+
+export interface RepositorySnapshot {
+  gitHead?: string;
+  observedFiles: Array<{ path: string; hash: string }>;
+}
+
+export interface RepositorySnapshotComparison {
+  gitHeadChanged: boolean;
+  changedPaths: string[];
+}
+
 export interface PlanCandidate {
   digest: string;
   createdAt: string;
   draft: PlanDraft;
+  snapshot: RepositorySnapshot;
 }
 
 export interface ArtifactRecord {
@@ -42,6 +57,7 @@ export interface VerifiedPlanArtifact {
   candidateDigest: string;
   markdownHash: string;
   markdown: string;
+  snapshot?: RepositorySnapshot;
 }
 
 type CanonicalValue =
@@ -96,8 +112,86 @@ export function hashText(value: string): string {
 export function createCandidate(
   draft: PlanDraft,
   now = new Date().toISOString(),
+  snapshot: RepositorySnapshot = { observedFiles: [] },
 ): PlanCandidate {
-  return { digest: digestValue(draft), createdAt: now, draft };
+  return { digest: digestValue(draft), createdAt: now, draft, snapshot };
+}
+
+async function gitHead(cwd: string): Promise<string | undefined> {
+  try {
+    const { stdout } = await execFile(
+      "git",
+      ["rev-parse", "--verify", "HEAD"],
+      { cwd, maxBuffer: 1024 },
+    );
+    const head = stdout.trim();
+    return /^[a-f0-9]{40,64}$/i.test(head) ? head : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Captures only the repository seams the plan claims to have observed. */
+export async function captureRepositorySnapshot(
+  cwd: string,
+  draft: PlanDraft,
+): Promise<RepositorySnapshot> {
+  const projectRoot = await realpath(cwd);
+  const paths = [
+    ...new Set(
+      draft.tasks
+        .flatMap((task) => [task, ...task.subtasks])
+        .flatMap((item) => item.files)
+        .filter((file) => file.status === "observed")
+        .map((file) => file.path.trim()),
+    ),
+  ];
+  const observedFiles = (
+    await Promise.all(
+      paths.map(async (path) => {
+        try {
+          return {
+            path,
+            hash: hashText(await readFile(resolve(projectRoot, path), "utf8")),
+          };
+        } catch {
+          return undefined;
+        }
+      }),
+    )
+  ).filter((file): file is { path: string; hash: string } => Boolean(file));
+  const head = await gitHead(projectRoot);
+  return head ? { gitHead: head, observedFiles } : { observedFiles };
+}
+
+/** Compares the current repository only with the seams recorded in a plan. */
+export async function compareRepositorySnapshot(
+  cwd: string,
+  snapshot: RepositorySnapshot,
+): Promise<RepositorySnapshotComparison> {
+  const projectRoot = await realpath(cwd);
+  const currentHead = snapshot.gitHead ? await gitHead(projectRoot) : undefined;
+  const changedPaths = (
+    await Promise.all(
+      snapshot.observedFiles.map(async ({ path, hash }) => {
+        try {
+          return hashText(
+            await readFile(resolve(projectRoot, path), "utf8"),
+          ) === hash
+            ? undefined
+            : path;
+        } catch {
+          return path;
+        }
+      }),
+    )
+  ).filter((path): path is string => Boolean(path));
+  return {
+    gitHeadChanged: Boolean(
+      snapshot.gitHead && currentHead !== snapshot.gitHead,
+    ),
+    changedPaths,
+  };
 }
 
 function escapeHtml(value: string): string {
@@ -293,6 +387,7 @@ export function renderPlanMarkdown(candidate: PlanCandidate): string {
     `# ${draft.title}`,
     "",
     `> Generated ${candidate.createdAt} · candidate-sha256:${candidate.digest}`,
+    `> Language: ${draft.language}`,
     "",
     "## Summary",
     "",
@@ -302,6 +397,16 @@ export function renderPlanMarkdown(candidate: PlanCandidate): string {
     "",
     draft.outcome,
     "",
+    "## Repository snapshot",
+    candidate.snapshot.gitHead
+      ? `- Git commit: ${candidate.snapshot.gitHead}`
+      : "- Git commit: unavailable (not a Git checkout).",
+    ...(candidate.snapshot.observedFiles.length
+      ? candidate.snapshot.observedFiles.map(
+          (file) => `- Observed seam: \`${file.path}\` · sha256:${file.hash}`,
+        )
+      : ["- No readable observed file seams were captured."]),
+    "",
     "## Repository evidence",
     ...draft.repositoryEvidence.flatMap((evidence) => [
       `### ${evidence.id} — ${evidence.sourceType} (${evidence.confidence})`,
@@ -309,6 +414,8 @@ export function renderPlanMarkdown(candidate: PlanCandidate): string {
       `**Claim:** ${evidence.claim}`,
       "",
       `**Source:** ${evidence.source}`,
+      "",
+      `**Observed seams:** ${evidence.seams?.map((path) => `\`${path}\``).join(", ") || "None"}`,
       "",
       `**Notes:** ${evidence.notes}`,
       "",
@@ -598,22 +705,33 @@ function graphHasCycle(nodes: GraphNode[], edges: GraphEdge[]): boolean {
   return nodes.some((node) => visit(node.id));
 }
 
+function graphProjection(
+  title: string,
+  description: string,
+  graph: { nodes: GraphNode[]; edges: GraphEdge[] },
+  tableDescription: string,
+  rejectCycles = false,
+): string {
+  if (
+    graph.nodes.length > 40 ||
+    graph.edges.length > 80 ||
+    (rejectCycles && graphHasCycle(graph.nodes, graph.edges))
+  ) {
+    return `<p class="muted">The diagram is omitted because the graph is oversized or invalid. The complete ${escapeHtml(tableDescription)} remains below.</p>`;
+  }
+  return renderGraphSvg(title, description, graph.nodes, graph.edges);
+}
+
 function taskGraphProjection(graph: {
   nodes: GraphNode[];
   edges: GraphEdge[];
 }): string {
-  if (
-    graph.nodes.length > 40 ||
-    graph.edges.length > 80 ||
-    graphHasCycle(graph.nodes, graph.edges)
-  ) {
-    return '<p class="muted">The dependency diagram is omitted because the graph is oversized or invalid. The complete relationship table remains below.</p>';
-  }
-  return renderGraphSvg(
+  return graphProjection(
     "Implementation task dependency map",
     "A visual projection of the task relationship table below.",
-    graph.nodes,
-    graph.edges,
+    graph,
+    "relationship table",
+    true,
   );
 }
 
@@ -657,18 +775,18 @@ function dependencyTable(tasks: PlanTask[]): string {
   for (const task of tasks)
     for (const dependency of task.dependsOn)
       downstream.get(dependency)?.push(task.id);
-  return `<div class="table-wrap"><table><caption>Task dependency relationships and execution order</caption><thead><tr><th>Order</th><th>Task</th><th>Predecessors</th><th>Downstream work</th></tr></thead><tbody>${order.map((task, index) => `<tr><td>${index + 1}</td><td><a href="#task-${escapeHtml(task.id)}">${escapeHtml(task.id)} — ${escapeHtml(task.title)}</a></td><td>${escapeHtml(task.dependsOn.join(", ") || "None")}</td><td>${escapeHtml((downstream.get(task.id) ?? []).join(", ") || "None")}</td></tr>`).join("")}</tbody></table></div>`;
+  return `<div class="table-wrap"><table><caption>Task dependency relationships and execution order</caption><thead><tr><th scope="col">Order</th><th scope="col">Task</th><th scope="col">Predecessors</th><th scope="col">Downstream work</th></tr></thead><tbody>${order.map((task, index) => `<tr><td>${index + 1}</td><td><a href="#task-${escapeHtml(task.id)}">${escapeHtml(task.id)} — ${escapeHtml(task.title)}</a></td><td>${escapeHtml(task.dependsOn.join(", ") || "None")}</td><td>${escapeHtml((downstream.get(task.id) ?? []).join(", ") || "None")}</td></tr>`).join("")}</tbody></table></div>`;
 }
 
 function architectureTable(
   nodes: ArchitectureNode[],
   edges: ArchitectureEdge[],
 ): string {
-  return `<div class="table-wrap"><table><caption>Architecture components and task relationships</caption><thead><tr><th>Node</th><th>Kind</th><th>Responsibility</th><th>Related tasks</th></tr></thead><tbody>${nodes.map((node) => `<tr><td>${escapeHtml(node.id)} — ${escapeHtml(node.label)}</td><td>${escapeHtml(node.kind)}</td><td>${escapeHtml(node.responsibility)}</td><td>${escapeHtml(node.taskIds.join(", ") || "None")}</td></tr>`).join("")}</tbody></table></div><h4>Directional interactions</h4>${list(edges.map((edge) => `${edge.from} → ${edge.to}: ${edge.label}`))}`;
+  return `<div class="table-wrap"><table><caption>Architecture components and task relationships</caption><thead><tr><th scope="col">Node</th><th scope="col">Kind</th><th scope="col">Responsibility</th><th scope="col">Related tasks</th></tr></thead><tbody>${nodes.map((node) => `<tr><td>${escapeHtml(node.id)} — ${escapeHtml(node.label)}</td><td>${escapeHtml(node.kind)}</td><td>${escapeHtml(node.responsibility)}</td><td>${escapeHtml(node.taskIds.join(", ") || "None")}</td></tr>`).join("")}</tbody></table></div><h4>Directional interactions</h4>${list(edges.map((edge) => `${edge.from} → ${edge.to}: ${edge.label}`))}`;
 }
 
 function traceabilityTable(draft: PlanDraft): string {
-  return `<div class="table-wrap"><table><caption>Requirement-to-proof traceability</caption><thead><tr><th>Requirement</th><th>Acceptance criteria</th><th>Implementation tasks</th><th>Validations</th><th>Evidence</th></tr></thead><tbody>${draft.requirements
+  return `<div class="table-wrap"><table><caption>Requirement-to-proof traceability</caption><thead><tr><th scope="col">Requirement</th><th scope="col">Acceptance criteria</th><th scope="col">Implementation tasks</th><th scope="col">Validations</th><th scope="col">Evidence</th></tr></thead><tbody>${draft.requirements
     .map((requirement) => {
       const criteria = draft.acceptanceCriteria.filter((criterion) =>
         criterion.requirementIds.includes(requirement.id),
@@ -693,6 +811,18 @@ function severityClass(severity: "low" | "medium" | "high"): string {
   return "good";
 }
 
+function snapshotHtml(snapshot: RepositorySnapshot): string {
+  const commit = snapshot.gitHead
+    ? `<p><strong>Git commit:</strong> <code>${escapeHtml(snapshot.gitHead)}</code></p>`
+    : "<p>Git commit: unavailable (not a Git checkout).</p>";
+  return `<article class="card">${commit}<h3>Observed file seams</h3>${list(
+    snapshot.observedFiles.map(
+      (file) => `<code>${file.path}</code> · sha256:${file.hash}`,
+    ),
+    "No readable observed file seams were captured.",
+  )}</article>`;
+}
+
 function coverageAuditTable(draft: PlanDraft): string {
   const coverage = planCoverageReport(draft);
   const checks: Array<[string, string[]]> = [
@@ -710,7 +840,7 @@ function coverageAuditTable(draft: PlanDraft): string {
     ["Dependency contradictions", coverage.contradictions],
     ["Unsupported observed file claims", coverage.unsupportedSpecifics],
   ];
-  return `<div class="table-wrap"><table><caption>Publication coverage results</caption><thead><tr><th>Audit check</th><th>Result</th></tr></thead><tbody>${checks.map(([label, values]) => `<tr><td>${escapeHtml(label)}</td><td>${values.length ? `<span class="tag bad">Block</span> ${escapeHtml(values.join(", "))}` : '<span class="tag good">Clear</span>'}</td></tr>`).join("")}</tbody></table></div>`;
+  return `<div class="table-wrap"><table><caption>Publication coverage results</caption><thead><tr><th scope="col">Audit check</th><th scope="col">Result</th></tr></thead><tbody>${checks.map(([label, values]) => `<tr><td>${escapeHtml(label)}</td><td>${values.length ? `<span class="tag bad">Block</span> ${escapeHtml(values.join(", "))}` : '<span class="tag good">Clear</span>'}</td></tr>`).join("")}</tbody></table></div>`;
 }
 
 export function renderPlanHtml(candidate: PlanCandidate): string {
@@ -737,7 +867,7 @@ export function renderPlanHtml(candidate: PlanCandidate): string {
   const evidence = draft.repositoryEvidence
     .map(
       (item) =>
-        `<article class="card" id="evidence-${escapeHtml(item.id)}"><p class="item-id">${escapeHtml(item.id)} · ${escapeHtml(item.sourceType)} · ${escapeHtml(item.confidence)} confidence</p><h3>${escapeHtml(item.claim)}</h3><p><strong>Source:</strong> ${escapeHtml(item.source)}</p><p>${escapeHtml(item.notes)}</p></article>`,
+        `<article class="card" id="evidence-${escapeHtml(item.id)}"><p class="item-id">${escapeHtml(item.id)} · ${escapeHtml(item.sourceType)} · ${escapeHtml(item.confidence)} confidence</p><h3>${escapeHtml(item.claim)}</h3><p><strong>Source:</strong> ${escapeHtml(item.source)}</p><p><strong>Observed seams:</strong> ${escapeHtml(item.seams?.join(", ") || "None")}</p><p>${escapeHtml(item.notes)}</p></article>`,
     )
     .join("");
   const requirements = draft.requirements
@@ -784,37 +914,40 @@ export function renderPlanHtml(candidate: PlanCandidate): string {
     .join("");
 
   return `<!doctype html>
-<html lang="en" data-plan-format="pi-plan-html-v2">
+<html lang="${escapeHtml(draft.language)}" data-plan-format="pi-plan-html-v2">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'sha256-${STYLE_CSP_HASH}'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="description" content="Implementation plan: ${escapeHtml(draft.title)}">
+  <meta name="plan-language" content="${escapeHtml(draft.language)}">
   <meta name="plan-candidate-digest" content="${candidate.digest}">
   <meta name="plan-markdown-sha256" content="${markdownHash}">
   <title>${escapeHtml(draft.title)} — Implementation Plan</title>
   <style>${STYLES}</style>
 </head>
 <body>
-<header><div class="shell"><p class="eyebrow">Implementation plan</p><h1>${escapeHtml(draft.title)}</h1><p class="lede">${escapeHtml(draft.summary)}</p><div class="meta"><span class="tag">${escapeHtml(draft.slug)}</span><span class="tag">candidate ${escapeHtml(candidate.digest)}</span><span class="tag">generated ${escapeHtml(candidate.createdAt)}</span><span class="tag">offline-first</span></div></div></header>
+<header><div class="shell"><p class="eyebrow">Implementation plan</p><h1>${escapeHtml(draft.title)}</h1><p class="lede">${escapeHtml(draft.summary)}</p><div class="meta"><span class="tag">${escapeHtml(draft.slug)}</span><span class="tag">${escapeHtml(draft.language)}</span><span class="tag">candidate ${escapeHtml(candidate.digest)}</span><span class="tag">generated ${escapeHtml(candidate.createdAt)}</span><span class="tag">offline-first</span></div></div></header>
 <main class="shell">
-  <nav class="toc" aria-label="Plan contents"><strong>Contents</strong><ol><li><a href="#outcome">Outcome</a></li><li><a href="#evidence">Evidence</a></li><li><a href="#requirements">Requirements</a></li><li><a href="#traceability">Traceability</a></li><li><a href="#decisions">Decisions</a></li><li><a href="#architecture">Architecture</a></li><li><a href="#dependencies">Dependencies</a></li><li><a href="#tasks">Tasks</a></li><li><a href="#validation">Validation</a></li><li><a href="#audit">Publication audit</a></li><li><a href="#risks">Risks and unknowns</a></li></ol></nav>
+  <nav class="toc" aria-label="Plan contents"><strong>Contents</strong><ol><li><a href="#outcome">Outcome</a></li><li><a href="#snapshot">Snapshot</a></li><li><a href="#evidence">Evidence</a></li><li><a href="#requirements">Requirements</a></li><li><a href="#traceability">Traceability</a></li><li><a href="#decisions">Decisions</a></li><li><a href="#architecture">Architecture</a></li><li><a href="#dependencies">Dependencies</a></li><li><a href="#tasks">Tasks</a></li><li><a href="#validation">Validation</a></li><li><a href="#audit">Publication audit</a></li><li><a href="#risks">Risks and unknowns</a></li></ol></nav>
   <section id="outcome"><div class="callout"><h2>Outcome</h2><p class="prose">${escapeHtml(draft.outcome)}</p><h3>Acceptance criteria</h3>${list(draft.acceptanceCriteria.map((item) => `${item.id}: ${item.outcome}`))}</div></section>
+  <section id="snapshot"><h2>Repository snapshot</h2><p class="muted">Execution compares this commit and these observed files to warn when a plan may be stale.</p>${snapshotHtml(candidate.snapshot)}</section>
   <section id="scope"><h2>Scope and constraints</h2><div class="grid"><article class="card"><h3>In scope</h3>${list(draft.inScope)}</article><article class="card"><h3>Out of scope</h3>${list(draft.outOfScope)}</article></div><article class="card"><h3>Constraints</h3>${list(draft.constraints)}</article></section>
   <section id="evidence"><h2>Repository and source evidence</h2><div class="grid">${evidence}</div></section>
   <section id="requirements"><h2>Requirements and acceptance criteria</h2><div class="grid">${requirements}</div><h3>Observable acceptance scenarios</h3><div class="grid">${acceptance}</div></section>
   <section id="traceability"><h2>Traceability matrix</h2><p class="muted">Each requirement is linked to its observable acceptance criteria, implementing tasks, validations, and supporting evidence.</p>${traceabilityTable(draft)}</section>
   <section id="decisions"><h2>Settled decisions</h2><div class="grid">${decisions || '<p class="muted">No consequential decisions recorded.</p>'}</div></section>
   <section><h2>Research findings</h2><div class="grid">${findings || '<p class="muted">No additional findings recorded.</p>'}</div></section>
-  <section id="architecture"><h2>Architecture design</h2><article class="card"><p class="prose">${escapeHtml(draft.architecture.summary)}</p><div class="figure-wrap"><figure><figcaption>Architecture component and interaction map</figcaption>${renderGraphSvg("Architecture component and interaction map", "A visual projection of the component and directional interaction table below.", typedArchitectureGraph.nodes, typedArchitectureGraph.edges)}</figure></div>${architectureTable(draft.architecture.nodes, draft.architecture.edges)}</article></section>
+  <section id="architecture"><h2>Architecture design</h2><article class="card"><p class="prose">${escapeHtml(draft.architecture.summary)}</p><div class="figure-wrap"><figure><figcaption>Architecture component and interaction map</figcaption>${graphProjection("Architecture component and interaction map", "A visual projection of the component and directional interaction table below.", typedArchitectureGraph, "component and interaction table")}</figure></div>${architectureTable(draft.architecture.nodes, draft.architecture.edges)}</article></section>
   <section id="dependencies"><h2>Task dependency order</h2><div class="figure-wrap"><figure><figcaption>Implementation task dependency map</figcaption>${taskGraphProjection(taskDependencyGraph)}</figure></div>${dependencyTable(draft.tasks)}</section>
   <section id="tasks"><h2>Implementation tasks</h2>${taskCards(draft.tasks)}</section>
   <section id="validation"><h2>Validation plan</h2><div class="grid">${validations}</div><h3>End-to-end validation gate</h3>${list(draft.endToEndValidationIds.map((id) => `Validation ${id}`))}</section>
   <section id="audit"><h2>Publication coverage audit</h2><p class="muted">The renderer recomputes these structural quality gates from the embedded plan data.</p>${coverageAuditTable(draft)}</section>
   <section><h2>Engineering considerations</h2><div class="grid">${engineering}</div></section>
-  <section id="risks"><h2>Risks, assumptions, and unknowns</h2><h3>Risks</h3>${risks ? `<div class="table-wrap"><table><thead><tr><th>Severity</th><th>Risk</th><th>Mitigation</th></tr></thead><tbody>${risks}</tbody></table></div>` : '<p class="muted">No material risks recorded.</p>'}<h3>Assumptions</h3>${assumptions ? `<div class="table-wrap"><table><thead><tr><th>ID</th><th>Assumption</th><th>Confidence</th><th>Provenance</th><th>Impact if false</th><th>Resolution point</th><th>Fallback</th></tr></thead><tbody>${assumptions}</tbody></table></div>` : '<p class="muted">No assumptions recorded.</p>'}<h3>Unknowns and deferrals</h3>${unknowns ? `<div class="table-wrap"><table><thead><tr><th>ID</th><th>Status</th><th>Severity</th><th>User-approved deferral</th><th>Unknown</th><th>Impact</th><th>Evidence</th><th>Owner</th><th>Resolution point</th><th>Trigger</th><th>Fallback</th></tr></thead><tbody>${unknowns}</tbody></table></div>` : '<p class="muted">No unresolved unknowns recorded.</p>'}</section>
+  <section id="risks"><h2>Risks, assumptions, and unknowns</h2><h3>Risks</h3>${risks ? `<div class="table-wrap"><table><thead><tr><th scope="col">Severity</th><th scope="col">Risk</th><th scope="col">Mitigation</th></tr></thead><tbody>${risks}</tbody></table></div>` : '<p class="muted">No material risks recorded.</p>'}<h3>Assumptions</h3>${assumptions ? `<div class="table-wrap"><table><thead><tr><th scope="col">ID</th><th scope="col">Assumption</th><th scope="col">Confidence</th><th scope="col">Provenance</th><th scope="col">Impact if false</th><th scope="col">Resolution point</th><th scope="col">Fallback</th></tr></thead><tbody>${assumptions}</tbody></table></div>` : '<p class="muted">No assumptions recorded.</p>'}<h3>Unknowns and deferrals</h3>${unknowns ? `<div class="table-wrap"><table><thead><tr><th scope="col">ID</th><th scope="col">Status</th><th scope="col">Severity</th><th scope="col">User-approved deferral</th><th scope="col">Unknown</th><th scope="col">Impact</th><th scope="col">Evidence</th><th scope="col">Owner</th><th scope="col">Resolution point</th><th scope="col">Trigger</th><th scope="col">Fallback</th></tr></thead><tbody>${unknowns}</tbody></table></div>` : '<p class="muted">No unresolved unknowns recorded.</p>'}</section>
 </main>
 <template id="pi-plan-markdown" data-format="markdown-v2">${escapeHtml(markdown)}</template>
+<template id="pi-plan-snapshot" data-format="repository-snapshot-v1">${escapeHtml(JSON.stringify(candidate.snapshot))}</template>
 <footer><div class="shell">Generated by Pi Planning HTML. Execute only after explicit approval with <code>/execute-plan &lt;this-file&gt;</code>.</div></footer>
 </body>
 </html>`;
@@ -835,6 +968,58 @@ function metaValue(html: string, name: string): string {
       `The HTML file must contain exactly one ${name} metadata value.`,
     );
   return matches[0]?.[1] ?? "";
+}
+
+function parseSnapshot(html: string): RepositorySnapshot | undefined {
+  const matches = [
+    ...html.matchAll(
+      /<template\s+id=["']pi-plan-snapshot["']\s+data-format=["']repository-snapshot-v1["']\s*>([\s\S]*?)<\/template>/gi,
+    ),
+  ];
+  if (matches.length === 0) return undefined;
+  if (matches.length !== 1)
+    throw new Error(
+      "The HTML file must contain at most one repository snapshot.",
+    );
+  let value: unknown;
+  try {
+    value = JSON.parse(decodeHtml(matches[0]?.[1] ?? ""));
+  } catch {
+    throw new Error("The repository snapshot is invalid.");
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new Error("The repository snapshot is invalid.");
+  const snapshot = value as {
+    gitHead?: unknown;
+    observedFiles?: unknown;
+  };
+  if (
+    (snapshot.gitHead !== undefined &&
+      (typeof snapshot.gitHead !== "string" ||
+        !/^[a-f0-9]{40,64}$/i.test(snapshot.gitHead))) ||
+    !Array.isArray(snapshot.observedFiles)
+  ) {
+    throw new Error("The repository snapshot is invalid.");
+  }
+  const observedFiles = snapshot.observedFiles.map((file) => {
+    if (!file || typeof file !== "object" || Array.isArray(file))
+      throw new Error("The repository snapshot is invalid.");
+    const entry = file as { path?: unknown; hash?: unknown };
+    if (
+      typeof entry.path !== "string" ||
+      !entry.path.trim() ||
+      isAbsolute(entry.path) ||
+      entry.path.replaceAll("\\", "/").split("/").includes("..") ||
+      typeof entry.hash !== "string" ||
+      !/^[a-f0-9]{64}$/i.test(entry.hash)
+    ) {
+      throw new Error("The repository snapshot is invalid.");
+    }
+    return { path: entry.path, hash: entry.hash };
+  });
+  return snapshot.gitHead
+    ? { gitHead: snapshot.gitHead, observedFiles }
+    : { observedFiles };
 }
 
 export function verifyPlanArtifact(
@@ -885,7 +1070,10 @@ export function verifyPlanArtifact(
       "The embedded plan Markdown does not match its integrity hash.",
     );
   }
-  return { candidateDigest, markdownHash, markdown };
+  const snapshot = parseSnapshot(html);
+  return snapshot
+    ? { candidateDigest, markdownHash, markdown, snapshot }
+    : { candidateDigest, markdownHash, markdown };
 }
 
 export function extractPlanMarkdown(

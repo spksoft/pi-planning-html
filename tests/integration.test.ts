@@ -54,6 +54,11 @@ test("plan_publish creates one validated offline HTML artifact, stores integrity
   assert.match(String(details.candidateDigest), /^[a-f0-9]{64}$/);
   assert.match(String(details.markdownHash), /^[a-f0-9]{64}$/);
   assert.match(String(details.contentHash), /^[a-f0-9]{64}$/);
+  assert.equal(
+    (details.repositorySnapshot as { observedFiles: unknown[] }).observedFiles
+      .length,
+    4,
+  );
 
   const htmlPath = join(cwd, "docs/plan/add-passkey-authentication.html");
   const html = await readFile(htmlPath, "utf8");
@@ -239,6 +244,26 @@ test("/execute-plan explicitly resolves a plan file, validates it, extracts Mark
   assert.match(
     harness.ctx.ui.notifications.at(-1)?.message ?? "",
     /Extracted docs\/plan\/add-passkey-authentication.html/i,
+  );
+});
+
+test("/execute-plan warns when observed seams changed since publication", async () => {
+  const { cwd, harness } = await bootstrap();
+  await harness.callTool(
+    "plan_publish",
+    validDraft() as unknown as Record<string, unknown>,
+  );
+  await writeFile(join(cwd, "src/auth/service.ts"), "changed after planning\n");
+
+  await harness.runCommand("execute-plan", "add-passkey-authentication");
+
+  assert.match(
+    harness.ctx.ui.notifications.at(-2)?.message ?? "",
+    /Plan snapshot differs.*changed seam src\/auth\/service\.ts/i,
+  );
+  assert.match(
+    harness.sentUserMessages.at(-1) ?? "",
+    /Repository snapshot warning: changed seam src\/auth\/service\.ts/i,
   );
 });
 

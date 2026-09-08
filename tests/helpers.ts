@@ -13,6 +13,7 @@ export function validDraft(overrides: Partial<PlanDraft> = {}): PlanDraft {
   return {
     title: "Add passkey authentication",
     slug: "add-passkey-authentication",
+    language: "en",
     summary:
       "Extend the established authentication boundary so passkeys reuse existing session issuance rather than create a parallel identity flow.",
     outcome:
@@ -24,6 +25,12 @@ export function validDraft(overrides: Partial<PlanDraft> = {}): PlanDraft {
           "The authentication service owns credential verification and session issuance.",
         sourceType: "repo",
         source: "src/auth/service.ts:AuthService.createSession",
+        seams: [
+          "src/auth/types.ts",
+          "src/auth/service.ts",
+          "src/auth/routes.ts",
+          "tests/auth/routes.test.ts",
+        ],
         confidence: "high",
         notes:
           "Observed service boundary is reused by the route and existing authentication tests.",

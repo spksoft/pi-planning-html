@@ -51,6 +51,8 @@ test("/plan contains its internal wayfinding and implementation-readiness contra
     /`plan_question` always adds free text and the reserved/i,
   );
   assert.match(prompt, /do not create tracker issues, local map files/i);
+  assert.match(prompt, /BCP 47 tag/i);
+  assert.match(prompt, /exact project-relative `seams`/i);
   assert.match(prompt, /\*\*Requirements\*\* \(`REQ-\*`\)/i);
   assert.match(prompt, /\*\*Acceptance criteria\*\* \(`AC-\*`\)/i);
   assert.match(prompt, /\*\*Decisions\*\* \(`DEC-\*`\)/i);

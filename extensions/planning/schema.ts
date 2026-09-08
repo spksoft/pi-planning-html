@@ -38,6 +38,8 @@ export interface PlanEvidence {
   claim: string;
   sourceType: EvidenceSourceType;
   source: string;
+  /** Exact project-relative paths supporting repository evidence. */
+  seams?: string[];
   confidence: Confidence;
   notes: string;
 }
@@ -178,6 +180,8 @@ export interface ArchitectureDesign {
 export interface PlanDraft {
   title: string;
   slug: string;
+  /** BCP 47 tag describing the generated HTML document's language. */
+  language: string;
   summary: string;
   outcome: string;
   repositoryEvidence: PlanEvidence[];
@@ -216,6 +220,7 @@ export interface ValidationResult {
 
 const ID_PATTERN = /^[a-zA-Z][a-zA-Z0-9_.-]*$/;
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const LANGUAGE_TAG_PATTERN = /^[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{2,8})*$/;
 const PLACEHOLDER_PATTERN =
   /^(?:tbd|todo|n\/?a|none|same as above|update (?:the )?code|implement (?:the )?(?:change|feature)|fix (?:the )?(?:issue|bug)|do it)[.!]?$/i;
 const UNEXPLAINED_NOT_APPLICABLE_PATTERN = /^(?:n\/?a|not applicable)[.!]?$/i;
@@ -289,6 +294,15 @@ function validateFileReferences(
     ) {
       errors.push(
         `${label} must cite repository evidence for observed file ${file.path}.`,
+      );
+    }
+    if (
+      file.status === "observed" &&
+      evidence?.sourceType === "repo" &&
+      !evidence.seams?.map((path) => path.trim()).includes(file.path.trim())
+    ) {
+      errors.push(
+        `${label} must cite repository evidence that names observed file ${file.path}.`,
       );
     }
   }
@@ -426,6 +440,8 @@ export function validatePlanDraft(draft: PlanDraft): ValidationResult {
   requireText(draft.title, 4, "Plan title must be specific.", errors);
   if (!SLUG_PATTERN.test(draft.slug))
     errors.push("Plan slug must be lowercase kebab-case.");
+  if (!LANGUAGE_TAG_PATTERN.test(draft.language))
+    errors.push("Plan language must be a BCP 47 language tag.");
   requireText(
     draft.summary,
     12,
@@ -500,6 +516,17 @@ export function validatePlanDraft(draft: PlanDraft): ValidationResult {
       `Evidence ${evidence.id} needs a source pointer.`,
       errors,
     );
+    if (
+      evidence.sourceType === "repo" &&
+      (!evidence.seams ||
+        evidence.seams.length === 0 ||
+        evidence.seams.some((path) => !present(path, 2)) ||
+        !unique(evidence.seams.map((path) => path.trim())))
+    ) {
+      errors.push(
+        `Repository evidence ${evidence.id} needs unique project-relative seams.`,
+      );
+    }
     requireText(
       evidence.notes,
       3,
@@ -1049,35 +1076,39 @@ export async function auditPlanDraft(
     };
   }
 
-  const observed = draft.tasks
-    .flatMap((task) => [task, ...task.subtasks])
-    .flatMap((item) => item.files)
-    .filter((file) => file.status === "observed");
-  for (const file of observed) {
-    const value = file.path.trim();
+  const observedPaths = new Set([
+    ...draft.tasks
+      .flatMap((task) => [task, ...task.subtasks])
+      .flatMap((item) => item.files)
+      .filter((file) => file.status === "observed")
+      .map((file) => file.path),
+    ...draft.repositoryEvidence
+      .filter((evidence) => evidence.sourceType === "repo")
+      .flatMap((evidence) => evidence.seams ?? []),
+  ]);
+  for (const path of observedPaths) {
+    const value = path.trim();
     if (!value || isAbsolute(value)) {
-      errors.push(
-        `Observed file ${file.path} must be a project-relative path.`,
-      );
+      errors.push(`Observed file ${path} must be a project-relative path.`);
       continue;
     }
     const requested = resolve(projectRoot, value);
     if (!isInside(projectRoot, requested)) {
-      errors.push(`Observed file ${file.path} escapes the current project.`);
+      errors.push(`Observed file ${path} escapes the current project.`);
       continue;
     }
     try {
       const resolved = await realpath(requested);
       if (!isInside(projectRoot, resolved)) {
         errors.push(
-          `Observed file ${file.path} resolves outside the current project.`,
+          `Observed file ${path} resolves outside the current project.`,
         );
         continue;
       }
       await lstat(resolved);
     } catch {
       errors.push(
-        `Observed file ${file.path} was not found in the current project.`,
+        `Observed file ${path} was not found in the current project.`,
       );
     }
   }

@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'sha256-dqLUX40dbztGX+SEMleWnE16Jan/xJjkp2AyspanIcg='; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="description" content="Research-backed feature specification for cost-aware model and reasoning-effort recommendations in Pi Planning HTML, integrated with pi-model-roles.">
+<title>Smarter Pi, Lower Cost — Model &amp; Effort Routing Proposal</title>
+<style>
+:root{color-scheme:light;--bg:#f3f6fb;--paper:#fff;--ink:#172339;--muted:#536179;--line:#d9e1ec;--blue:#214fc2;--navy:#142343;--mint:#086b54;--soft:#eaf5ef;--amber:#805000}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}a{color:var(--blue);text-underline-offset:3px}a:focus-visible{outline:3px solid #ad5700;outline-offset:4px}a:hover{text-decoration-thickness:2px}.page{max-width:1160px;margin:auto;padding:24px}header{background:var(--navy);color:#fff;padding:clamp(28px,6vw,64px);border-radius:20px;margin-bottom:24px}header p{max-width:850px;color:#dbe5ff}header .small{color:#c3d0ed}.skip{position:absolute;left:16px;top:-100px;background:#fff;color:#214fc2;padding:8px 14px;z-index:2}.skip:focus{top:10px}.eyebrow{font-size:.8rem;text-transform:uppercase;letter-spacing:.14em;font-weight:750}h1,h2,h3{line-height:1.2;letter-spacing:-.025em}h1{font-size:clamp(2.4rem,6vw,4.5rem);margin:.3em 0;max-width:900px}h2{font-size:clamp(1.5rem,3vw,2.1rem);margin:0 0 18px}h3{font-size:1.17rem;margin:0 0 12px}p{margin:0 0 16px}li{margin:7px 0}section,nav{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:clamp(20px,4vw,38px);margin-bottom:24px;scroll-margin-top:18px}.toc ol{columns:3;column-gap:32px;padding-left:22px}.toc li{break-inside:avoid}.lead{font-size:1.17rem}.tag{display:inline-block;border-radius:6px;padding:3px 9px;background:#edf2ff;color:var(--blue);font-size:.78rem;font-weight:750;margin:0 6px 8px 0}.tag.green{background:var(--soft);color:var(--mint)}.tag.amber{background:#fff2d9;color:var(--amber)}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.card{padding:21px;border:1px solid var(--line);border-radius:12px;min-width:0}.card p:last-child{margin-bottom:0}.callout{background:#edf3ff;border-left:5px solid var(--blue);padding:19px 22px;margin:20px 0;border-radius:6px}.callout.warn{background:#fff6e6;border-color:var(--amber)}.callout.good{background:var(--soft);border-color:var(--mint)}.small,figcaption{font-size:.9rem;color:var(--muted)}.muted{color:var(--muted)}.table-wrap{max-width:100%}table{width:100%;border-collapse:collapse;margin:16px 0 24px;table-layout:fixed}th,td{border:1px solid var(--line);padding:12px;vertical-align:top;text-align:left;overflow-wrap:anywhere}th{background:#eef3fb;font-size:.84rem;color:#2a3d61}caption{text-align:left;font-weight:750;margin-bottom:10px}code{background:#eef2f8;padding:2px 5px;border-radius:4px;font-size:.91em;overflow-wrap:anywhere}pre{background:#17253d;color:#e7efff;padding:22px;border-radius:12px;white-space:pre-wrap;overflow-wrap:anywhere;font:13px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace}pre code{background:transparent;padding:0;color:inherit}figure{margin:24px 0}.diagram{overflow-x:auto;border:1px solid var(--line);border-radius:12px;padding:12px;background:#f8faff}.diagram svg{display:block;width:100%;min-width:780px;height:auto}figcaption{margin-top:10px}.mock{border-radius:12px;background:#142343;color:#e9f0ff;padding:24px}.mock p{margin:8px 0}.mock strong{color:#8ee1c2}.mock code{background:#293b5d;color:#e9f0ff}.checklist{padding-left:24px}.sources li{padding-bottom:13px}.sources p{margin:4px 0 0}.back{font-size:.88rem}footer{padding:10px 6px 36px;color:var(--muted)}.metric{font-size:1.5rem;font-weight:800;color:var(--blue)}section p,section li{overflow-wrap:anywhere}@media(max-width:760px){.page{padding:10px}.toc ol{columns:1}.grid,.grid.three{grid-template-columns:1fr}table{table-layout:auto}thead{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}tbody,tr,td,th{display:block}tr{border:1px solid var(--line);margin-bottom:12px}td,th{border:0;border-bottom:1px solid var(--line)}td[data-label]::before{content:attr(data-label) ": ";font-weight:750;color:#2a3d61}header{border-radius:12px}pre{padding:15px}}@media print{@page{margin:14mm}body{background:#fff;font-size:10pt}.page{padding:0;max-width:none}header{background:#fff;color:var(--ink);padding:12px 0;border-radius:0}header p{color:var(--muted)}h1{font-size:29pt}section,nav{border:0;border-radius:0;padding:12px 0;margin-bottom:18px}.grid,.grid.three{display:block}.card{margin-bottom:10px;break-inside:avoid}.callout{break-inside:avoid}.diagram{overflow:visible}.diagram svg{min-width:0}.mock,pre{color:#172339;background:#eef2f8;white-space:pre-wrap}.mock strong{color:#086b54}.mock code{background:#fff;color:#172339}h2,h3{break-after:avoid}tr{break-inside:avoid}thead{display:table-header-group}a{color:inherit}.toc ol{columns:3}.back{display:none}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to report</a>
+<div class="page" id="top">
+<header>
+<p class="eyebrow">Research &amp; feature specification · 7 September 2026</p>
+<h1>Smarter Pi.<br>Less wasted compute.</h1>
+<p class="lead">Choose the right <strong>model + reasoning effort</strong> for a task, preserve user control, and optimize for work that actually succeeds—not merely cheap tokens.</p>
+<p>Recommendation: add a <strong>Plan-Aware Routing Advisor</strong> to Pi Planning HTML, backed by the existing <strong>pi-model-roles</strong> selector and a small, measured evaluation loop.</p>
+<p class="small">Research proposal only. No routing implementation, model changes, provider benchmarking, or configuration changes were performed. This document is not an executable /execute-plan artifact.</p>
+</header>
+<nav class="toc" aria-label="Report contents"><h2>Contents</h2><ol>
+<li><a href="#recommendation">The recommendation</a></li><li><a href="#observed">What already exists</a></li><li><a href="#research">What research supports</a></li><li><a href="#features">Feature priorities</a></li><li><a href="#prediction">How prediction should work</a></li><li><a href="#routing-table">Task → model → effort</a></li><li><a href="#architecture">Integration architecture</a></li><li><a href="#contracts">Proposed contracts</a></li><li><a href="#cost">Cost and budget rules</a></li><li><a href="#escalation">Escalation without loops</a></li><li><a href="#experience">User experience</a></li><li><a href="#evaluation">How to prove it works</a></li><li><a href="#delivery">Delivery slices</a></li><li><a href="#safety">Safety and boundaries</a></li><li><a href="#decisions">Decisions and unknowns</a></li><li><a href="#sources">Sources and evidence</a></li>
+</ol></nav>
+<main id="main">
+<section id="recommendation">
+<h2>1. Build an advisor first, not a second autonomous router</h2>
+<div class="callout good"><p><strong>The most valuable feature:</strong> inspect a prompt or a verified plan task and show the cheapest <em>eligible, sufficiently reliable</em> model/effort pair, why it fits, when to escalate, and the evidence behind that recommendation.</p><p>Initially keep execution unchanged. Add opt-in application only after real Pi dispatch tests and workload evaluations pass.</p></div>
+<div class="grid three">
+<article class="card"><span class="tag">Intelligence</span><h3>Understand the task</h3><p>Use uncertainty, dependency depth, change risk, verification strength, context needs, and language—not prompt length or keywords alone.</p></article>
+<article class="card"><span class="tag green">Efficiency</span><h3>Price the whole job</h3><p>Include selector calls, tool calls, context replay, cache misses, failures, verification, and repair. An expensive model at low effort can beat a cheap model that retries.</p></article>
+<article class="card"><span class="tag amber">Trust</span><h3>Know when not to guess</h3><p>Preserve explicit choices. Mark unfamiliar tasks uncalibrated. Keep a capable baseline when the cheaper option has no reliable evidence.</p></article>
+</div>
+<p><strong>Architecture choice:</strong> Pi Planning HTML owns task evidence, HTML explanations, and integrity-aware handoff. <code>pi-model-roles</code> owns model-role configuration and selection. The execution host owns model application, permissions, and launches. One routing owner per boundary prevents two selectors charging for—and overruling—the same prompt. <a href="#r1">[R1]</a> <a href="#r3">[R3]</a></p>
+<p><strong>Not a promise:</strong> no predictor can know the best model perfectly before execution. Treat routing as a calibrated decision under uncertainty, with an explicit “keep current / insufficient evidence” outcome.</p>
+</section>
+
+<section id="observed">
+<h2>2. Repository findings: useful building blocks are already here</h2>
+<table><caption>Observed state, not proposed behavior</caption><thead><tr><th>Evidence</th><th>Current capability</th><th>Implication</th></tr></thead><tbody>
+<tr><td data-label="Evidence"><code>schema.ts: PlanTask, PlanValidation</code></td><td data-label="Current">Tasks already contain files, What/Why/How, dependencies, expected behavior, parallel-safety notes, and validation links.</td><td data-label="Implication">Reuse these as task signals. Do not ask users to repeat their plan to a router. <a href="#r1">[R1]</a></td></tr>
+<tr><td data-label="Evidence"><code>index.ts: execute-plan</code></td><td data-label="Current">Verifies artifact identity and Markdown, extracts a brief, then calls <code>pi.sendUserMessage()</code>. It does not select a model or execute a task scheduler.</td><td data-label="Implication">Add any routing integration after integrity verification and before normal dispatch, without turning the package into a lifecycle engine. <a href="#r1">[R1]</a></td></tr>
+<tr><td data-label="Evidence"><code>config.ts: PlanningConfig</code></td><td data-label="Current">Only artifact-directory configuration exists.</td><td data-label="Implication">Budget, recommendation, and routing-policy settings below are new proposals, not settings that work today. <a href="#r1">[R1]</a></td></tr>
+<tr><td data-label="Evidence">Local <code>pi-model-roles</code> checkout</td><td data-label="Current">Already routes eligible idle TUI prompts, including raw <code>/plan …</code>, into configured role/model/effort pairs. It has manual pins, conservative fallbacks, and a public selection API.</td><td data-label="Implication">Integrate instead of duplicating it. Presence of a checkout is not proof its extension is enabled in every session. <a href="#r3">[R3]</a></td></tr>
+<tr><td data-label="Evidence"><code>/model-roles run /execute-plan …</code></td><td data-label="Current">Can route the parent before invoking an extension-owned command, but classifies only the command name and raw arguments. It does not open the referenced plan.</td><td data-label="Implication">A filename is weak task evidence. The missing feature is verified-plan-aware selection, not another command wrapper. <a href="#r3">[R3]</a></td></tr>
+<tr><td data-label="Evidence">Installed version audit</td><td data-label="Current">Planning repo commit <code>71f685e</code>; local development Pi packages <code>0.84.4</code>; global Pi <code>0.85.1</code>; model-roles checkout <code>f35901a</code>.</td><td data-label="Implication">Public API availability and actual request timing must be tested against supported versions. A passing TypeScript build alone is not enough. <a href="#r2">[R2]</a></td></tr>
+</tbody></table>
+<div class="callout warn"><p><strong>Important compatibility finding:</strong> model-roles documents that Pi 0.85.1 captures the model/effort before the <code>context</code> hook. Changing session state there can change the footer without changing that request. Its automatic per-turn/child routing experiment was withdrawn. Do not base this proposal on that hook. <a href="#r4">[R4]</a></p></div>
+</section>
+
+<section id="research">
+<h2>3. What the research supports—and what it does not</h2>
+<table><caption>Evidence translated into product decisions</caption><thead><tr><th>Source finding</th><th>Recommended design</th><th>Limit</th></tr></thead><tbody>
+<tr><td data-label="Finding">RouteLLM learns routing from preference data and reports lower costs while retaining much of a strong model’s benchmark performance. <a href="#s1">[S1]</a></td><td data-label="Design">Begin with role rules, then train/calibrate on your own task outcomes.</td><td data-label="Limit">Its historical model pairs and general benchmarks do not establish savings on this repository or long coding loops.</td></tr>
+<tr><td data-label="Finding">FrugalGPT explores prompt adaptation, approximation, and cascades. <a href="#s2">[S2]</a></td><td data-label="Design">Use a cheap-first path only where failures can be detected safely and escalation is bounded.</td><td data-label="Limit">A checker that misses a bug makes the apparent savings misleading. Repeating side effects is not a harmless retry.</td></tr>
+<tr><td data-label="Finding">RouterBench evaluates routing across a large set of model inference outcomes. <a href="#s3">[S3]</a></td><td data-label="Design">Compare a router with strong-only, cheap-only, fixed-effort, and tuned-effort baselines.</td><td data-label="Limit">Single-response routing evidence is not a substitute for end-to-end agent evaluation.</td></tr>
+<tr><td data-label="Finding">OpenAI and Anthropic document effort as a model-dependent quality/efficiency control. <a href="#s4">[S4]</a> <a href="#s5">[S5]</a></td><td data-label="Design">Choose model and effort jointly. Benchmark a stronger model at lower effort before adding another model tier.</td><td data-label="Limit">Supported effort labels are not equal compute budgets across models. More effort does not guarantee a better answer.</td></tr>
+<tr><td data-label="Finding">Provider caching documentation describes prefix reuse and configuration-sensitive misses. <a href="#s6">[S6]</a> <a href="#s7">[S7]</a></td><td data-label="Design">Keep model/effort stable within an active episode; account for switching and replay costs.</td><td data-label="Limit">Some newer transports preserve cache across effort changes; that capability must be verified for the exact model and Pi adapter.</td></tr>
+<tr><td data-label="Finding">Anthropic’s cost guide recommends comparing cost per completed task, tuning effort, and measuring on your own workload. <a href="#s7">[S7]</a></td><td data-label="Design">Make a local quality-and-cost scorecard the feedback loop, not a global leaderboard.</td><td data-label="Limit">Vendor measurements are directional and workload-specific. This report makes no savings guarantee.</td></tr>
+</tbody></table>
+</section>
+
+<section id="features">
+<h2>4. Feature backlog, in recommended order</h2>
+<table><caption>What to add, why, and the acceptance signal</caption><thead><tr><th>Priority / feature</th><th>Specification</th><th>Why it helps / proof</th></tr></thead><tbody>
+<tr><td data-label="Feature"><strong>F1 · P0<br>Task routing preview</strong></td><td data-label="Specification">Generate an evidence-backed task profile and a model/effort recommendation. Include selected pair, alternatives, eligibility exclusions, uncertainty, verification needs, and reason codes.</td><td data-label="Proof">Makes choices understandable. A preview must not call <code>setModel</code>, edit roles, spawn children, or start implementation.</td></tr>
+<tr><td data-label="Feature"><strong>F2 · P0<br>Live capability filter</strong></td><td data-label="Specification">Use exact provider/model IDs, allowed scope, auth presence, supported efforts, input modalities, and context capacity. Track freshness and requested versus effective effort.</td><td data-label="Proof">Avoids invalid routes. Unsupported models or explicit effort pins are rejected—not silently substituted. Registry availability is not a successful live-provider probe.</td></tr>
+<tr><td data-label="Feature"><strong>F3 · P0<br>Verified-plan bridge</strong></td><td data-label="Specification">Supply a bounded task summary from an integrity-verified artifact to the existing selection service. Resolve model ownership and manual pause first.</td><td data-label="Proof">Routes from actual work, not filenames. Tampered plans cause zero selector requests, zero model changes, and zero dispatch.</td></tr>
+<tr><td data-label="Feature"><strong>F4 · P0<br>True cost ledger</strong></td><td data-label="Specification">Separate predicted ranges, reported tokens, estimated list-price cost, known billed cost, and unknown/subscription cost. Count selection, retries, verification, and tools.</td><td data-label="Proof">Prevents fake savings. Unknown rates remain unknown; no numeric “$0” claim from missing price metadata.</td></tr>
+<tr><td data-label="Feature"><strong>F5 · P1<br>Joint model/effort policy</strong></td><td data-label="Specification">Rank eligible pairs on observed success, total cost, and latency. A deterministic fast path precedes any small classifier. Uncalibrated tasks keep the capable baseline.</td><td data-label="Proof">Uses intelligence where it pays. Manual/default-only decisions make no extra classifier call; every learned route is tied to an evaluation version.</td></tr>
+<tr><td data-label="Feature"><strong>F6 · P1<br>Verification-led escalation</strong></td><td data-label="Specification">After checkable failure, recommend one stronger pair or higher effort at the next supported idle/pre-launch boundary. Save partial evidence; distinguish infrastructure failure.</td><td data-label="Proof">Reduces endless retries. No automatic replay of a migration, push, deployment, or payment. A fresh launch requires the existing host’s authorization.</td></tr>
+<tr><td data-label="Feature"><strong>F7 · P1<br>Context efficiency advisor</strong></td><td data-label="Specification">Report repeated reads, excessive fetched text, tool-schema overhead, long outputs, and likely cache invalidation. Prepare bounded task briefs for independent workers.</td><td data-label="Proof">Reduces waste before downgrading intelligence. Never remove project instructions, unresolved decisions, failure evidence, or required validation just to fit a cheaper model.</td></tr>
+<tr><td data-label="Feature"><strong>F8 · P1<br>Local evaluation scorecard</strong></td><td data-label="Specification">Compare outcomes by task family, model snapshot, effort, language, harness version, and price snapshot. Start in shadow/recommendation mode.</td><td data-label="Proof">Makes “smarter and cheaper” falsifiable. Shadow decisions alone cannot prove the unchosen model’s quality or actual savings.</td></tr>
+<tr><td data-label="Feature"><strong>F9 · P2<br>Calibrated learned router</strong></td><td data-label="Specification">Learn from opted-in replay results using a small classifier or ranking model. Include an abstain threshold, out-of-distribution checks, and versioned rollback.</td><td data-label="Proof">Improves beyond keyword rules only if held-out evaluation wins. No online exploration on risky production tasks.</td></tr>
+</tbody></table>
+<p><strong>MVP:</strong> F1–F4 plus a baseline evaluation harness. Keep F5’s first policy simple. Do not start by training a router, building a multi-agent council for each prompt, or benchmarking every model automatically.</p>
+</section>
+
+<section id="prediction">
+<h2>5. How Pi should predict task fit</h2>
+<h3>Step A — build a compact task profile</h3>
+<table><caption>Inputs to prediction</caption><thead><tr><th>Signal</th><th>Evidence</th><th>Conservative interpretation</th></tr></thead><tbody>
+<tr><td data-label="Signal">Task family</td><td data-label="Evidence">Explanation, extraction, localized fix, feature, debugging, architecture, review, research.</td><td data-label="Interpretation">Mixed intent is not automatically “routine.” A single prompt can span several families.</td></tr>
+<tr><td data-label="Signal">Uncertainty</td><td data-label="Evidence">Missing acceptance oracle, unresolved decisions, unfamiliar APIs, ambiguous behavior.</td><td data-label="Interpretation">Missing evidence means unknown—not easy. Research or clarify before claiming an optimal route.</td></tr>
+<tr><td data-label="Signal">Risk and blast radius</td><td data-label="Evidence">Authentication, persistence, destructive operations, public interfaces, dependency fan-out.</td><td data-label="Interpretation">“Just fix auth” is short but can be high risk. File count alone is not complexity.</td></tr>
+<tr><td data-label="Signal">Verifiability</td><td data-label="Evidence">Reproduction, unit/contract/e2e oracles, review requirements, rollback plan.</td><td data-label="Interpretation">Reliable checks make cheaper-first work more defensible. A schema-valid plan is not proof the design is correct.</td></tr>
+<tr><td data-label="Signal">Working context</td><td data-label="Evidence">Estimated instruction + tool-schema + retained history + task input + output reserve.</td><td data-label="Interpretation">A 20-word task can need a huge repository context. Never route using user-message tokens alone.</td></tr>
+<tr><td data-label="Signal">Language and modality</td><td data-label="Evidence">Selected question language, code language, images/documents required by the work.</td><td data-label="Interpretation">Thai is a competency requirement, not a complexity penalty. The same intent in Thai and English should follow equivalent policy.</td></tr>
+</tbody></table>
+<h3>Step B — filter, then choose a pair</h3>
+<ol>
+<li><strong>Honor pins and policy.</strong> An explicit model/effort choice wins. A paused or disabled selector stays paused. If that choice cannot satisfy a hard capability constraint, explain the conflict instead of silently overriding it.</li>
+<li><strong>Remove ineligible candidates.</strong> Check allowlist, exact identity, capabilities, context, and policy constraints. Unknown privacy/capability status is not permission to proceed.</li>
+<li><strong>Try deterministic selection.</strong> A user-chosen role or a trusted, tightly scoped task template may bypass semantic classification. An arbitrary request merely containing “typo” may not.</li>
+<li><strong>Classify only if useful.</strong> At most one bounded, tool-free selector request per decision. Ask for a task category or allowed role ID, not a full solution or arbitrary model name. Charge its overhead to the task.</li>
+<li><strong>Choose model × effort jointly.</strong> Use measured outcomes for each supported pair. If evidence is insufficient, return <code>uncalibrated</code> and retain the configured capable baseline.</li>
+<li><strong>Revalidate before applying.</strong> Check session identity, queue/idle state, pins, model scope, and capability freshness. Record the actual request pair separately from the proposed pair.</li>
+</ol>
+<pre><code>Proposed decision objective:
+  choose the eligible (model, effort) pair with lowest expected total cost
+  subject to the owner-defined quality floor and latency constraint.
+
+Expected total cost = selector + execution + verification
+                    + switching/context replay + expected repair.
+
+Use a lower confidence bound on task success when calibrated data exists.
+Without enough data: no probability claim; keep the baseline or ask.</code></pre>
+<p class="small">An LLM saying “confidence: 0.95” is not calibration. Learn confidence from held-out outcomes and report uncertainty/sample size. Do not collect private chain-of-thought to explain routing; use observable features and bounded reason codes.</p>
+</section>
+
+<section id="routing-table">
+<h2>6. A starting routing policy</h2>
+<p>These are <strong>provisional role policies</strong>, not proven rankings. Bind roles to exact models available in your Pi installation. Start with a small portfolio; the same model may serve several roles at different effort settings. <a href="#r5">[R5]</a></p>
+<table><caption>Suggested initial model/effort choices</caption><thead><tr><th>Prompt / task</th><th>Model role</th><th>Starting effort</th><th>Reason / escalation</th></tr></thead><tbody>
+<tr><td data-label="Task">Fix spelling in one Markdown paragraph.</td><td data-label="Role">Routine: lowest-cost evaluated instruction-following model.</td><td data-label="Effort">Off/minimal/low, only where supported.</td><td data-label="Reason">Explicit low-risk diff. Inspect the result; do not classify obvious pinned/template work with an expensive model.</td></tr>
+<tr><td data-label="Task">Add a handler following an existing pattern and supplied tests.</td><td data-label="Role">Implementer: reliable coding/tool-use model.</td><td data-label="Effort">Low or medium.</td><td data-label="Reason">Known contract, checkable output. Escalate if the pattern does not actually fit or tests reveal broader coupling.</td></tr>
+<tr><td data-label="Task">Find an intermittent race across workers and retries.</td><td data-label="Role">Reasoner: strongest evaluated debugging model.</td><td data-label="Effort">High; compare medium in evaluation.</td><td data-label="Reason">Competing hypotheses and hidden state. Get a reproducible oracle; more thinking alone cannot fix missing evidence.</td></tr>
+<tr><td data-label="Task">Design an authentication/data migration with rollback.</td><td data-label="Role">Reasoner, with independent review where warranted.</td><td data-label="Effort">High; xhigh/max only with measured benefit.</td><td data-label="Reason">Irreversible or security-sensitive decisions. Quality floor overrides a preference for low cost.</td></tr>
+<tr><td data-label="Task">Extract exact fields from a provided document.</td><td data-label="Role">Routine with required context/modality support.</td><td data-label="Effort">Low.</td><td data-label="Reason">Use schema and source-span checks. Unknown fields must remain unknown, not guessed.</td></tr>
+<tr><td data-label="Task">Explain a selected code change in Thai.</td><td data-label="Role">Evaluated Thai-capable explanation model.</td><td data-label="Effort">Low for straightforward explanation.</td><td data-label="Reason">Preserve identifiers and technical meaning. Do not route to a frontier model merely because the prompt is non-English.</td></tr>
+<tr><td data-label="Task">Research a new API and compare trade-offs.</td><td data-label="Role">Research-capable model with approved search tools.</td><td data-label="Effort">Medium as a candidate baseline.</td><td data-label="Reason">Sources and synthesis both matter. Bound searches; high effort is not a substitute for current documentation.</td></tr>
+<tr><td data-label="Task">“Continue” or a filename without task details.</td><td data-label="Role">Keep current / capable fallback.</td><td data-label="Effort">Preserve current.</td><td data-label="Reason">Low-information request. Use an explicitly supplied verified task summary, not an invented difficulty estimate.</td></tr>
+</tbody></table>
+<div class="callout"><p><strong>Provider-neutral effort is an intent, not a token count.</strong> Pi exposes model-specific supported thinking levels; OpenAI, Anthropic, and Gemini have distinct parameter and billing semantics. Store requested effort, Pi’s effective effort, and provider-reported usage. Do not assume every model supports “off,” or that “high” means the same compute everywhere. <a href="#r2">[R2]</a> <a href="#s4">[S4]</a> <a href="#s5">[S5]</a> <a href="#s8">[S8]</a></p></div>
+</section>
+
+<section id="architecture">
+<h2>7. Integration without breaking the existing workflow</h2>
+<figure><div class="diagram"><svg viewBox="0 0 1060 300" aria-hidden="true" focusable="false">
+<defs><marker id="route-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#52637e"/></marker></defs>
+<g fill="none" stroke="#52637e" stroke-width="2" marker-end="url(#route-arrow)"><path d="M202 92 H228"/><path d="M412 92 H438"/><path d="M622 92 H648"/><path d="M832 92 H858"/><path d="M952 147 V215 H545"/><path d="M445 215 H320 V147"/></g>
+<g fill="#fff" stroke="#9aafd4"><rect x="18" y="37" width="184" height="110" rx="10"/><rect x="228" y="37" width="184" height="110" rx="10"/><rect x="438" y="37" width="184" height="110" rx="10"/><rect x="648" y="37" width="184" height="110" rx="10"/><rect x="858" y="37" width="184" height="110" rx="10"/><rect x="445" y="181" width="100" height="68" rx="10"/></g>
+<g font-family="system-ui,sans-serif" font-size="15" text-anchor="middle" fill="#172339"><text x="110" y="72" font-weight="700">Verified task</text><text x="110" y="98">evidence + constraints</text><text x="110" y="122">Planning HTML</text><text x="320" y="72" font-weight="700">Task profile</text><text x="320" y="98">risk + proof + scope</text><text x="320" y="122">bounded local summary</text><text x="530" y="72" font-weight="700">Selection policy</text><text x="530" y="98">model × effort</text><text x="530" y="122">one routing owner</text><text x="740" y="72" font-weight="700">Host checks</text><text x="740" y="98">pins + scope + idle</text><text x="740" y="122">no hidden override</text><text x="950" y="72" font-weight="700">Normal execution</text><text x="950" y="98">existing Pi / launcher</text><text x="950" y="122">validation remains</text><text x="495" y="209" font-weight="700">Scorecard</text><text x="495" y="232">opt-in data</text><text x="725" y="245" font-size="13">Observed outcome and total usage</text></g>
+</svg></div><figcaption>The same relationship in text: verified task → task profile → model/effort decision → host revalidation → normal execution → opt-in outcome scorecard. The scorecard informs future decisions; it does not schedule or replay work.</figcaption></figure>
+<h3>Two entry paths, one selector owner</h3>
+<ul>
+<li><strong>New prompt:</strong> keep model-roles’ supported idle TUI input path. It can route raw <code>/plan …</code> before expansion. Do not add a second global input router in Planning HTML.</li>
+<li><strong>Approved plan:</strong> a proposed optional bridge inside <code>/execute-plan</code> verifies the artifact first, prepares a bounded task/whole-plan summary, then requests a decision before dispatch. Recommendations in a plan do not authorize execution.</li>
+<li><strong>Independent child task:</strong> select before a permitted native launch, only when the launcher exposes resolved model pins and allowlists. The parent keeps integration and final validation. Unsupported external CLI mappings remain unsupported.</li>
+<li><strong>Active tool loop:</strong> leave it alone. No automatic switches from <code>context</code>, no concurrent “better model” replacement, and no rerouting on each tool result.</li>
+</ul>
+<p>The existing event service <code>pi-model-roles:select:v1</code> returns a decision and does <em>not</em> mutate the parent. Its current request accepts task text, pins, allowlists, and image requirements, not this proposal’s rich task-profile object. A bounded text projection can bridge v1; richer cost-aware selection would need a reviewed API/configuration revision. <a href="#r5">[R5]</a></p>
+<p><strong>Compatibility gate:</strong> the event service does not automatically provide the parent’s manual-pause state for independent requests. If the planning bridge cannot establish routing ownership and pause/pin state publicly, it must stay recommendation-only. Do not infer ownership from environment variables or private controller fields.</p>
+<p><strong>Application is not atomic:</strong> on tested Pi 0.85.1, <code>setModel()</code> has no cancellation or conditional session-state argument. A switch already in progress may finish after cancellation or navigation. Preflight guards reduce risk but do not solve that SDK limitation; keep the user informed, check the active pair after an interruption, and do not claim automatic rollback. <a href="#r4">[R4]</a></p>
+<p><strong>Whole-plan versus per-task:</strong> the current executor starts one normal agent run. MVP recommends a parent pair for the whole plan and may display per-task advice. It does not promise automatic phase switching or task-by-task execution.</p>
+</section>
+
+<section id="contracts">
+<h2>8. Proposed data and behavior contracts</h2>
+<p>These are new design sketches, <strong>not callable APIs or accepted configuration today</strong>. Avoid adding a required field to every small plan until the optional mode proves useful.</p>
+<pre><code>TaskRoutingProfile {
+  schemaVersion: 1
+  taskId, candidateDigest
+  family, uncertainty, risk, verifiability
+  evidenceRefs[], requiredCapabilities[]
+  estimatedWorkingContextTokens: number | null
+  language: string
+}
+
+RouteAdvice {
+  mode: "recommendation" | "shadow" | "opt-in-apply"
+  status: "recommended" | "preserved" | "uncalibrated" | "unavailable"
+  role?: string
+  model?: { provider, id }       // exact IDs from eligible registry
+  requestedEffort?, effectiveEffort?
+  reasonCodes[], evidenceRefs[], excludedCandidates[]
+  estimatedCostRange?: { low, high, basis, currency }
+  calibration?: { evaluationVersion, sampleCount, uncertainty }
+  escalation?: { trigger, permittedNextPair, attemptLimit }
+}
+
+ExecutionReceipt {               // separate from immutable approved HTML
+  decisionId, candidateDigest, taskId?
+  requestedPair, observedDispatchPair
+  reportedUsage, costBasis, priceSnapshot
+  outcome: "passed" | "failed" | "unknown" | "infrastructure-blocked"
+  validationEvidenceRefs[], elapsedMs
+}</code></pre>
+<ul>
+<li><strong>Do not mistake prose for typed data.</strong> The existing artifact exposes canonical Markdown for execution, not a public task-profile parser. For durable task-aware routing, add a small versioned routing manifest at publication, generated from validated task data—not inferred later with regexes from arbitrary HTML.</li>
+<li><strong>Integrity binds the recommendation.</strong> Include advisory data in candidate/Markdown parity and hash a typed manifest when introducing it. Validate its link to the candidate. Older integrity-valid v2 plans still execute through the original path without routing metadata; unsupported manifest versions never activate routing.</li>
+<li><strong>Separate history from current availability.</strong> An approved plan stores the recommendation snapshot; execution rechecks availability, rates, and pins. Explain changes in a separate receipt, never silently rewrite the approved HTML.</li>
+<li><strong>No false success state.</strong> An emitted kickoff is “dispatched,” not “implemented.” Completion needs named validation evidence from the existing executor or a user-attested outcome. Missing telemetry remains unknown.</li>
+</ul>
+</section>
+
+<section id="cost">
+<h2>9. Cost controls that actually improve efficiency</h2>
+<div class="grid">
+<article class="card"><h3>Optimize cost per successful task</h3><p class="metric">All spend ÷ validated successes</p><p>Also report success rate and total attempted tasks, so the metric cannot improve by abandoning hard work. Include failed attempts, selector overhead, tests/review, external tools, and supported child usage.</p></article>
+<article class="card"><h3>Do not equate billing with usage</h3><p>Subscription/OAuth quota, API list prices, local inference, and provider credits are different. Track tokens and latency for all routes; show monetary estimates only where the pricing basis is known.</p></article>
+</div>
+<h3>A small worked example—illustrative, not measured</h3>
+<p>Suppose a strong-model attempt costs <strong>$0.80</strong> including its verification. A routine attempt costs <strong>$0.15</strong>, routing costs <strong>$0.01</strong>, and its extra verification/context overhead is <strong>$0.04</strong>. If 20% require one strong repair:</p>
+<pre><code>Expected cheap-first cost = $0.01 + $0.15 + $0.04 + 0.20 × $0.80
+                          = $0.36 per task.
+
+If 80% need repair instead: $0.20 + 0.80 × $0.80 = $0.84.
+The "cheaper" route is then more expensive than strong-only.</code></pre>
+<p class="small">This example assumes the final quality is equivalent, the verifier catches failures, strong repair succeeds, and the stated costs include relevant overhead. Real tasks need measured probabilities, tail latency, and human/rework cost where available.</p>
+<h3>Budget policy</h3>
+<ul>
+<li><strong>No-request fast paths:</strong> explicit pins, paused routing, a single permitted pair, and trusted direct-role selections should avoid a classifier call.</li>
+<li><strong>Bound the selector:</strong> one call, constrained output, timeout/cancellation, and no retry chain. The current model-roles selector uses its configured default; a dedicated cheap selector profile is an upstream enhancement, not an existing option.</li>
+<li><strong>Use conservative admission estimates:</strong> estimate remaining task cost before a new owned launch. Unknown pricing disables monetary auto-optimization; it does not label a model free.</li>
+<li><strong>Separate soft budgets from hard caps:</strong> an extension can stop initiating its own optional work or warn. It cannot promise a universal hard dollar ceiling on Pi, providers, tools, and concurrent children. Provider/host-enforced controls are the backstop; cancellation cannot undo incurred charges.</li>
+<li><strong>Normalize usage once:</strong> input, cache reads/writes, and output categories differ by API. Reasoning may already be included in billed output. Do not double-count it. Dedupe parent/child records with stable request identities.</li>
+<li><strong>Keep cache affinity:</strong> avoid gratuitous model/effort/tool-definition changes mid-episode. Model-switch benefits must exceed cold-context cost. Do not globally alter provider caching settings without explicit ownership.</li>
+<li><strong>Shorter narration, not weaker work:</strong> reduce repetitive progress messages and unneeded page dumps. Preserve the requested detailed final plan, mandatory docs, project instructions, and required tests.</li>
+</ul>
+</section>
+
+<section id="escalation">
+<h2>10. Escalation: check the failure before buying more thinking</h2>
+<table><caption>Bounded recovery policy</caption><thead><tr><th>Signal</th><th>Recommended response</th><th>Never do</th></tr></thead><tbody>
+<tr><td data-label="Signal">Type/test failure points to a misunderstood contract.</td><td data-label="Response">Preserve failing output and partial diff; recommend higher effort or a stronger pair at a supported next boundary.</td><td data-label="Never">Repeat the same cheap attempt indefinitely or invent success because the model says it is confident.</td></tr>
+<tr><td data-label="Signal">Rate limit, missing auth, unavailable test database, or launcher error.</td><td data-label="Response">Record infrastructure failure. Follow the existing owner’s retry policy or stop for repair.</td><td data-label="Never">Label it low intelligence, auto-spend on a larger model, or switch runner protocols.</td></tr>
+<tr><td data-label="Signal">Output was truncated before the patch/plan completed.</td><td data-label="Response">Review context and output reserve. A higher effort can make truncation worse; preserve evidence and adjust through supported controls.</td><td data-label="Never">Claim success from an incomplete structured response or solve it only by adding more thinking.</td></tr>
+<tr><td data-label="Signal">Task expands into security, irreversible data changes, or ambiguous acceptance.</td><td data-label="Response">Stop the cheap path, revise the task profile, and seek the required owner decision or stronger review.</td><td data-label="Never">Use budget pressure to bypass approval, validation, or data-safety requirements.</td></tr>
+</tbody></table>
+<p><strong>Proposed pilot limit:</strong> at most one escalation recommendation per bounded task, then require a deliberate new decision. This is a configurable design starting point, not a proven optimal retry count. Automatic attempts are deferred until safe checkpoint and launcher ownership contracts exist.</p>
+</section>
+
+<section id="experience">
+<h2>11. What the user should see</h2>
+<div class="mock" aria-label="Illustrative routing preview">
+<p><strong>Routing preview · recommendation only</strong></p>
+<p>Task: add a native language preference before planning questions</p>
+<p>Suggested: <code>implementer</code> → your configured coding model · <code>medium</code></p>
+<p>Why: small integration change, but session branching and cancellation need tests.</p>
+<p>Excluded: text-only candidates if retained images are required; unsupported efforts.</p>
+<p>Evidence: task files + acceptance cases. Calibration: not yet measured on your workload.</p>
+<p>Cost: unknown until a price/usage basis is available. No model change has been made.</p>
+<p>Choices: Keep current · Apply suggestion once · Choose another pair · Disable suggestions</p>
+</div>
+<p class="small">UI mock, not an implemented command. Render choices with Pi’s native select/input APIs and use the already selected question language, including Thai. Translate explanations, not model IDs, task IDs, filenames, or provider settings.</p>
+<h3>Keep the command surface small</h3>
+<ul>
+<li><strong>Today:</strong> use <code>/model-roles settings</code> to define roles. <code>/model-roles use &lt;role&gt;</code> selects directly; <code>/model-roles disable</code> pins against automatic routing. The existing wrapper can route a command, but not its plan contents.</li>
+<li><strong>Proposed:</strong> an optional routing section in the HTML plan, a native preview before opted-in execution, and a model-roles report/diagnostic view. No new task tracker or approval lifecycle.</li>
+<li><strong>Modes:</strong> off, recommendation, shadow, and opt-in apply. Recommendation is the suggested initial integration default. Shadow records advice without changing the active pair.</li>
+<li><strong>Consent:</strong> disclose the extra classifier provider/cost and the exact kind of task summary sent. Research/setup approval is not permanent permission to benchmark or export private tasks.</li>
+</ul>
+</section>
+
+<section id="evaluation">
+<h2>12. “Smarter and cheaper” needs an evaluation contract</h2>
+<p>Do not evaluate only the route label. Evaluate the <strong>finished artifact or patch</strong>, including its failures and total cost. No live workload comparison was run for this report.</p>
+<h3>Build a representative, private test set</h3>
+<ul>
+<li>Include localized fixes, brownfield features, migrations, concurrency bugs, plan/research requests, incomplete prompts, and long-context tasks.</li>
+<li>Include equivalent Thai/English prompts, misleading “simple” wording, retained images, invalid models, and unclear continuation requests.</li>
+<li>Use stable repository snapshots and independent acceptance tests/review. Keep expected solutions and held-out checks out of the router’s inputs.</li>
+<li>Split by repository/task family/time where possible, not merely random paraphrases. Record model snapshot, Pi version, tools, context policy, and prices for reproducibility.</li>
+</ul>
+<table><caption>Baseline experiment arms</caption><thead><tr><th>Arm</th><th>Purpose</th></tr></thead><tbody>
+<tr><td data-label="Arm">Current user-selected model/effort</td><td data-label="Purpose">The actual workflow to improve.</td></tr>
+<tr><td data-label="Arm">Capable model with an effort sweep</td><td data-label="Purpose">Checks whether effort tuning alone beats multi-model complexity.</td></tr>
+<tr><td data-label="Arm">Cheapest eligible evaluated model</td><td data-label="Purpose">Quantifies failures, not just low token prices.</td></tr>
+<tr><td data-label="Arm">Existing model-roles selector</td><td data-label="Purpose">Measures the incremental benefit of plan-aware signals.</td></tr>
+<tr><td data-label="Arm">Proposed routing + bounded recovery</td><td data-label="Purpose">Counts all selection, switching, retries, verification, and repair.</td></tr>
+</tbody></table>
+<h3>Release gates</h3>
+<ol class="checklist">
+<li><strong>Correct dispatch:</strong> fake-provider tests inspect the actual request model and provider effort, not just the footer. Exercise cancellation, navigation, reload, queued work, and manual changes.</li>
+<li><strong>Integrity:</strong> a valid same-slug replacement or changed manifest must not select or execute under old approval. Old valid artifacts still follow the unrouted path.</li>
+<li><strong>Ownership:</strong> one selector at most; missing service, manual pause, unsupported host, or unresolved scope never causes a hidden fallback launch.</li>
+<li><strong>Quality:</strong> define a non-inferiority margin with the owner before evaluation; report confidence intervals and separate risk slices. Zero observed regressions is not proof of zero risk. Never auto-downgrade high-risk classes without adequate evidence.</li>
+<li><strong>Economics:</strong> lower all-in cost per validated success and acceptable p95 completion latency compared with the best relevant baseline, including the tuned single-model arm.</li>
+<li><strong>Reliability:</strong> report first-pass success, eventual success, escalation rate, false-pass rate, unknown outcomes, and fallback frequency. Infrastructure failures are tracked separately, not quietly discarded.</li>
+<li><strong>Rollout:</strong> offline evaluation → recommendation/shadow → small owner-approved low-risk pilot → broader use only after passing gates. Roll back by disabling advice/application and restoring the previous routing-policy version; do not rewrite Pi defaults.</li>
+</ol>
+<p class="small">A starting evaluation set size is a planning choice, not a statistically justified guarantee. Use a pilot to estimate variance, then size the comparison for the chosen quality margin. Any live evaluation budget must be approved separately. Shadow mode cannot observe unchosen-model outcomes; use approved replay for counterfactual comparisons.</p>
+</section>
+
+<section id="delivery">
+<h2>13. Suggested delivery slices</h2>
+<table><caption>Concrete seams, order, and validation</caption><thead><tr><th>Slice</th><th>What / how</th><th>Where</th><th>Proof</th></tr></thead><tbody>
+<tr><td data-label="Slice"><strong>A · Baseline &amp; ownership</strong><br>First</td><td data-label="What">Define supported Pi/model-roles versions, user-pin/pause precedence, cost basis, and non-inferiority criteria. Build request-level fake-provider tests before automatic application.</td><td data-label="Where">Observed: <code>tests/harness.ts</code>, <code>tests/integration.test.ts</code>. Proposed: versioned integration fixtures; upstream model-roles compatibility tests.</td><td data-label="Proof">Actual request matches the selected pair. Unsupported hosts stay recommendation-only. No credentials or real provider charges in unit tests.</td></tr>
+<tr><td data-label="Slice"><strong>B · Task profile + HTML advice</strong><br>After A</td><td data-label="What">Generate bounded profiles from existing tasks/evidence. Render clear advice, uncertainty, and exclusions with HTML/Markdown parity. Preserve integrity and legacy behavior.</td><td data-label="Where">Observed: <code>schema.ts</code>, <code>artifact.ts</code>, <code>index.ts</code>, <code>prompts/plan.md</code>. Proposed: <code>extensions/planning/routing-profile.ts</code>.</td><td data-label="Proof">Task-profile validation, XSS labels, manifest tamper tests, older v2 compatibility, Thai display, no execution from preview.</td></tr>
+<tr><td data-label="Slice"><strong>C · Selection bridge + ledger</strong><br>After B</td><td data-label="What">Negotiate one routing owner; request selection from verified task text after approval, record estimates, and optionally apply at the proven boundary. Keep original executor and validation.</td><td data-label="Where">Observed: <code>index.ts</code>, <code>config.ts</code>. Proposed: <code>extensions/planning/routing-bridge.ts</code>. Companion changes require a separate model-roles worktree/review.</td><td data-label="Proof">Exactly one selector, full model-ID preservation, budget/unknown-price behavior, cancellation, manual pins, service absence, no duplicate receipt accounting.</td></tr>
+<tr><td data-label="Slice"><strong>D · Evaluation &amp; pilot</strong><br>After C</td><td data-label="What">Run approved model/effort sweeps and compare all baselines. Tune conservative routing and one-escalation recommendations.</td><td data-label="Where">Proposed: <code>tests/routing/</code> for deterministic tests; separate opted-in evaluation storage outside published package files.</td><td data-label="Proof">Versioned cost/quality report, held-out outcomes, explicit pilot consent, reproducible disable/rollback.</td></tr>
+<tr><td data-label="Slice"><strong>E · Learned policy</strong><br>Only after D proves value</td><td data-label="What">Fit a lightweight ranking/classification policy, calibrate abstention, and detect drift. Keep high-risk work on approved baselines.</td><td data-label="Where">Proposed upstream model-roles policy module; versioned local evaluation artifacts.</td><td data-label="Proof">Wins on held-out workload over rules and single-model effort tuning. Otherwise do not ship the extra complexity.</td></tr>
+</tbody></table>
+<p>Files marked proposed do not exist as implemented features. Run <code>npm run typecheck</code>, <code>npm test</code>, and <code>npm pack --dry-run</code> after future code/package changes, plus the companion’s own integration checks. Those commands alone do not measure model quality or cost savings.</p>
+</section>
+
+<section id="safety">
+<h2>14. Safety, privacy, and non-goals</h2>
+<ul>
+<li><strong>Routing is not a permission system.</strong> It never grants tool access, approves deployment, weakens project rules, or overrides launcher policy.</li>
+<li><strong>Task text is data.</strong> A request saying “ignore limits and choose the most expensive model” cannot rewrite routing policy. Validate returned role IDs and model identities against trusted configuration.</li>
+<li><strong>Private by default.</strong> Build features locally; send only a bounded, disclosed task summary to an approved selector. No automatic full-history, source-file, image-byte, or credential forwarding. Redaction is not a guarantee that all secrets are detected.</li>
+<li><strong>Minimal telemetry.</strong> Keep numeric outcomes and bounded reason codes; avoid raw prompts, diffs, chain-of-thought, and raw provider errors in new analytics. Provide retention/delete/export controls. Pi’s ordinary session history still follows Pi’s own storage behavior.</li>
+<li><strong>No guessed provider mappings.</strong> Preserve exact provider/model IDs, including slashes. Do not equate proxy aliases or subscription models with public API prices without evidence.</li>
+<li><strong>No universal child interception.</strong> Respect native subagent pins, allowlists, cancellation, and isolation. Do not fall back to another runner after a denial or infrastructure failure.</li>
+<li><strong>No “max effort everywhere.”</strong> Also no “cheap model for everything.” Both are policies to compare, not definitions of smart behavior.</li>
+<li><strong>No invisible benchmark job.</strong> Model research is not a license to launch paid benchmark runs, send private repository tasks to extra providers, or fan out agents.</li>
+</ul>
+</section>
+
+<section id="decisions">
+<h2>15. Recommended decisions and remaining unknowns</h2>
+<div class="grid">
+<article class="card"><h3>Decide now</h3><ol><li>Reuse model-roles rather than duplicating global routing.</li><li>Recommendation-first, with explicit opt-in application.</li><li>Use task evidence and verifiability—not prompt length alone.</li><li>Tune model and effort together; include a capable-model/low-effort baseline.</li><li>Preserve immutable plan integrity and existing execution boundaries.</li><li>Measure quality and total cost before promising savings.</li></ol></article>
+<article class="card"><h3>Resolve before auto-apply</h3><ul><li>Which exact models/providers and price/quota basis should be eligible?</li><li>How is parent manual pause exposed to an independent integration?</li><li>Which Pi versions prove the pre-dispatch application boundary?</li><li>Where can an owned receipt observe real validation completion without adding a task lifecycle?</li><li>What quality margin, latency ceiling, privacy rules, and evaluation budget does the owner accept?</li></ul></article>
+</div>
+<div class="callout good"><p><strong>My recommendation:</strong> build <em>verified task profiles + explainable routing advice + an honest cost scorecard</em> first. Then use measured evidence to add automatic low-risk model/effort selection through the existing routing owner. That is a credible path to making Pi smarter and more cost-efficient without disguising guesses as optimization.</p></div>
+</section>
+
+<section id="sources">
+<h2>16. Sources and evidence</h2>
+<p>Research checked on <strong>7 September 2026</strong>. Provider documentation is live and may change. Local API/compatibility evidence takes precedence over generic SDK snippets for this installation. Public benchmark results are not measurements of this extension.</p>
+<h3>Repository and local integration evidence</h3>
+<ol class="sources">
+<li id="r1"><strong>[R1] Pi Planning HTML · commit 71f685e.</strong> Inspected <a href="https://github.com/spksoft/pi-planning-html/blob/71f685e/README.md">README</a>, <a href="https://github.com/spksoft/pi-planning-html/blob/71f685e/extensions/planning/schema.ts">schema.ts</a>, <a href="https://github.com/spksoft/pi-planning-html/blob/71f685e/extensions/planning/index.ts">index.ts</a>, <a href="https://github.com/spksoft/pi-planning-html/blob/71f685e/extensions/planning/config.ts">config.ts</a>, AGENTS.md, and package.json. <p>Supports: existing task evidence, explicit execution, branch language preference, package scope, and configuration limits. Local source inspection; no route implementation is present.</p></li>
+<li id="r2"><strong>[R2] Pi model and extension APIs.</strong> Installed global documentation at Pi 0.85.1; local development packages 0.84.4. <a href="https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/extensions.md">Extensions</a>, <a href="https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/models.md">Models</a>, <a href="https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/prompt-templates.md">Prompt templates</a>. Context7 library: <code>/earendil-works/pi</code>.<p>Supports: public setModel/setThinkingLevel APIs, model-dependent effort maps, model cost metadata, native UI, and template expansion. Online main may differ from the installed version; lifecycle behavior still requires dispatch tests.</p></li>
+<li id="r3"><strong>[R3] pi-model-roles · local checkout f35901a.</strong> <a href="https://github.com/spksoft/pi-model-roles/blob/f35901a/README.md">README</a> and <a href="https://github.com/spksoft/pi-model-roles/blob/f35901a/docs/architecture.md">Architecture</a>.<p>Supports: existing idle-prompt routing, role/default fallback, explicit command wrapper, selector scope, and separation of policy from execution. Installed checkout inspected; not a claim every session has it enabled.</p></li>
+<li id="r4"><strong>[R4] pi-model-roles compatibility.</strong> <a href="https://github.com/spksoft/pi-model-roles/blob/f35901a/docs/compatibility.md">Supported contexts and withdrawn per-turn experiment</a>.<p>Supports: context-hook snapshot timing on tested Pi 0.85.1, parent-only wrapper, child limitations, and in-flight model-switch caveats. These are documented companion test findings, not new live-provider tests performed for this report.</p></li>
+<li id="r5"><strong>[R5] pi-model-roles API and configuration.</strong> <a href="https://github.com/spksoft/pi-model-roles/blob/f35901a/docs/api.md">Integration API</a> and <a href="https://github.com/spksoft/pi-model-roles/blob/f35901a/docs/configuration.md">Configuration</a>.<p>Supports: versioned event selection, exact IDs, pins, allowlists, classifier limits, returned decision/usage fields, and lack of a separate selector-effort setting.</p></li>
+</ol>
+<h3>Primary research and provider guidance</h3>
+<ol class="sources">
+<li id="s1"><strong>[S1] RouteLLM — Ong et al., 2024.</strong> <a href="https://sky.cs.berkeley.edu/project/routellm/">UC Berkeley project summary</a>; <a href="https://arxiv.org/abs/2406.18665">paper</a>.<p>Used for the principle of learned routing from preference data. The reported savings depend on historical models, task distribution, and benchmark quality targets.</p></li>
+<li id="s2"><strong>[S2] FrugalGPT — Chen, Zaharia, Zou, 2023.</strong> <a href="https://arxiv.org/abs/2305.05176">Paper abstract</a>.<p>Used for prompt adaptation and model-cascade ideas. It does not establish safe retries for side-effecting software agents.</p></li>
+<li id="s3"><strong>[S3] RouterBench — Hu et al., 2024.</strong> <a href="https://arxiv.org/abs/2403.12031">Paper abstract, revision 2</a>.<p>Used for systematic comparison of routing policies on cost and performance. A benchmark framework, not proof of which model fits your private tasks.</p></li>
+<li id="s4"><strong>[S4] OpenAI — Reasoning models.</strong> <a href="https://platform.openai.com/docs/guides/reasoning">Official guide</a>.<p>Used for model-dependent effort, reasoning-token billing, incomplete-output behavior, and preserving compatible reasoning state. Direct API details must not be assumed to work on every Pi provider transport.</p></li>
+<li id="s5"><strong>[S5] Anthropic — Effort.</strong> <a href="https://platform.claude.com/docs/en/build-with-claude/effort">Official guide</a>.<p>Used for effort as a soft thoroughness control rather than a hard total budget, supported-level variation, and cache-sensitive effort changes.</p></li>
+<li id="s6"><strong>[S6] OpenAI — Prompt caching.</strong> <a href="https://platform.openai.com/docs/guides/prompt-caching">Official guide</a>.<p>Used for exact-prefix caching, settings that affect reuse, and model-specific cache-preserving effort controls. Savings and compatibility depend on the exact API/model.</p></li>
+<li id="s7"><strong>[S7] Anthropic — Optimizing for cost and intelligence.</strong> <a href="https://platform.claude.com/docs/en/about-claude/models/optimizing-for-cost-and-intelligence">Official guide</a>.<p>Used for cost-per-completed-task measurement, effort sweeps, caching/context hygiene, verification-led retries, and advisor/orchestrator trade-offs. Vendor-internal measurements are directional; no numerical result is adopted as a product guarantee.</p></li>
+<li id="s8"><strong>[S8] Google — Gemini thinking.</strong> <a href="https://ai.google.dev/gemini-api/docs/thinking">Official guide</a>.<p>Used for per-model thinking controls and separate thought-token accounting. The fetched page documents the Interactions API; it does not prove identical controls on Pi’s Google transport.</p></li>
+</ol>
+<p class="back"><a href="#top">Back to top</a></p>
+</section>
+</main>
+<footer>Prepared for Pi Planning HTML. Static HTML and inline SVG; no scripts, trackers, remote fonts, or runtime network dependencies. External links are references only. All proposed APIs, file additions, budgets, and routing policies require implementation and evaluation before use.</footer>
+</div>
+</body>
+</html>

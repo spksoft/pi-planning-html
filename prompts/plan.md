@@ -14,7 +14,7 @@ This command is **planning only**. Do not implement the request, edit project so
 ## Evidence and precision rules
 
 - Treat the current repository, project instructions, source, tests, commands, and configuration as the source of truth. Read them before making repository-specific claims.
-- Mark facts through the plan's structured evidence: `repo`, `user`, or `external`, plus a source pointer and confidence. Existing paths/modules must be `observed` and cite repository evidence. New paths/modules must be `proposed`; never present a proposed filename, line number, API, version, target, or dependency as an observed fact.
+- Mark facts through the plan's structured evidence: `repo`, `user`, or `external`, plus a source pointer and confidence. Repository evidence must name its exact project-relative `seams`; every existing `observed` file/module must cite repository evidence that names that same seam. New paths/modules must be `proposed`; never present a proposed filename, line number, API, version, target, or dependency as an observed fact.
 - Earn detail from evidence. Do not use empty adjectives such as “robust”, “fast”, “intuitive”, “secure”, or “production-ready” as acceptance criteria. State observable behavior, an oracle, and expected evidence instead.
 - Do not invent numeric goals. Use a user decision, source, existing baseline, or a measurement task when a threshold is necessary.
 
@@ -49,9 +49,9 @@ This is a single-session adaptation of Wayfinder's destination, fog, and frontie
 
 ## Required published plan shape
 
-Supply every field required by `plan_publish`. In particular, the plan must include:
+Supply every field required by `plan_publish`. Set `language` to a BCP 47 tag matching the selected planning-question language (for example, `en` or `th`). In particular, the plan must include:
 
-- **Repository evidence** with stable IDs, claims, sources, confidence, and notes.
+- **Repository evidence** with stable IDs, claims, sources, exact repository seams where applicable, confidence, and notes.
 - **Requirements** (`REQ-*`) that state observable behavior, rationale, priority, and evidence IDs.
 - **Acceptance criteria** (`AC-*`) linked to requirements, with precondition, action, observable outcome, edge/failure case, and validation IDs.
 - **Decisions** (`DEC-*`) for consequential choices: context, choice, evidence/rationale, consequences, reversibility, affected modules, status, and alternatives for hard-to-reverse choices. A user choice is not an assumption and must not disappear after questioning.
@@ -69,7 +69,7 @@ Before calling `plan_publish`, verify all of the following and correct the plan 
 
 1. Every `REQ-*` has an `AC-*`; every `AC-*` has a `VAL-*`; every `AC-*` is implemented by a task; every validation has expected evidence.
 2. Every implementation task links to a requirement or acceptance criterion. Every task/subtask has precise What, Why, How, files/modules, and validation.
-3. Every existing file/module claim has repository evidence and identifies a current project-relative seam that will pass the publish-time repository audit. Proposed files are labeled proposed. No unsupported line numbers, commands, paths, versions, or thresholds remain.
+3. Every existing file/module claim has repository evidence that names the same current project-relative seam and will pass the publish-time repository audit. Proposed files are labeled proposed. No unsupported line numbers, commands, paths, versions, or thresholds remain.
 4. Dependencies are exact task IDs, acyclic, and reflect executable ordering. No task is duplicated by a subtask.
 5. Hard-to-reverse architecture/data/security decisions include alternatives. The architecture nodes/edges, task dependency map, HTML sections, and Markdown will all derive from the same structured data.
 6. Scope is not contradictory; all blocking questions are resolved; every deferred unknown has an owner, trigger, and fallback.
