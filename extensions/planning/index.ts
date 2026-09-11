@@ -395,7 +395,11 @@ function executionPrompt(
 
 The canonical execution brief is now available at ${markdownPath}. Before editing, reread the project instructions and verify that the named source seams, observed evidence, assumptions, and constraints still match the current repository. If a verified seam has changed, report the deviation and update the implementation approach deliberately rather than blindly following stale paths.${snapshotWarning}
 
-Read the brief, implement tasks in dependency order, preserve stated constraints, and produce the validation evidence named by each task and acceptance criterion. Run the end-to-end validation gate before reporting completion. Report deviations, unresolved unknowns, or blockers clearly.
+Treat the approved plan as the implementation direction: follow its in-scope and out-of-scope boundaries, reuse and simplification decisions, non-goals, constraints, and applicable UI requirements. Inspect the actual code before modifying it, then choose the smallest coherent change that preserves the named callers, contracts, security, validation, error handling, accessibility, compatibility, and explicitly requested behavior.
+
+Implement tasks in dependency order. Do not weaken tests or silently redefine acceptance criteria to obtain a pass. If a material deviation would change approved scope, acceptance, reuse decisions, or UI direction, report it and request user direction; do not create another approval workflow. For UI work, use an existing browser or accessibility harness only when the plan calls for it.
+
+Run the planned checks against the final relevant implementation, including the named end-to-end validation. Never invent screenshots, test runs, source provenance, design approval, or validation results. Report what changed, what was actually checked and its results, material deviations, unresolved unknowns, and remaining uncertainty.
 
 ${delegation}`;
 }

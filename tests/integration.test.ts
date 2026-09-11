@@ -242,6 +242,26 @@ test("/execute-plan explicitly resolves a plan file, validates it, extracts Mark
     /Use the active subagent tool only for dependency-independent/i,
   );
   assert.match(
+    harness.sentUserMessages.at(-1) ?? "",
+    /follow its in-scope and out-of-scope boundaries, reuse and simplification decisions/i,
+  );
+  assert.match(
+    harness.sentUserMessages.at(-1) ?? "",
+    /Do not weaken tests or silently redefine acceptance criteria/i,
+  );
+  assert.match(
+    harness.sentUserMessages.at(-1) ?? "",
+    /existing browser or accessibility harness only when the plan calls for it/i,
+  );
+  assert.match(
+    harness.sentUserMessages.at(-1) ?? "",
+    /Never invent screenshots, test runs, source provenance, design approval, or validation results/i,
+  );
+  assert.match(
+    harness.sentUserMessages.at(-1) ?? "",
+    /Report what changed, what was actually checked and its results, material deviations, unresolved unknowns, and remaining uncertainty/i,
+  );
+  assert.match(
     harness.ctx.ui.notifications.at(-1)?.message ?? "",
     /Extracted docs\/plan\/add-passkey-authentication.html/i,
   );

@@ -18,15 +18,46 @@ This command is **planning only**. Do not implement the request, edit project so
 - Earn detail from evidence. Do not use empty adjectives such as “robust”, “fast”, “intuitive”, “secure”, or “production-ready” as acceptance criteria. State observable behavior, an oracle, and expected evidence instead.
 - Do not invent numeric goals. Use a user decision, source, existing baseline, or a measurement task when a threshold is necessary.
 
+## Evidence-backed planning guidance
+
+Apply this guidance proportionately to the request. Use the plan's existing evidence, requirements, acceptance criteria, decisions, tasks, validations, assumptions, and unknowns; do not create a parallel contract or make a small change bureaucratic.
+
+### Code quality
+
+Before proposing an addition, investigate and answer from repository evidence:
+
+- Does the requested behavior need new code at all?
+- Which existing implementation, helper, module, or pattern can be reused?
+- Can the standard library, native platform, or installed dependencies satisfy it?
+- What is the smallest coherent implementation that meets the requirement?
+- Which existing callers, contracts, and behaviors must remain unchanged?
+- What focused checks would detect a regression?
+
+For a bug fix, inspect relevant callers and plan the shared root-cause correction rather than a patch for only the reported symptom. Do not manufacture foundation tasks, future-proofing, configuration options, generic frameworks, or abstractions for hypothetical needs. Do not simplify away security, validation, error handling, accessibility, compatibility, or explicitly requested behavior.
+
+When a new dependency, abstraction, service, shared component, or other consequential addition is justified, record the concrete need, the simpler evidence-backed alternative considered, and the consequence in an existing `DEC-*` decision. Do not require an essay for an ordinary helper.
+
+### UI quality — only when the request materially affects UI
+
+For material UI work, establish the primary user task and intended outcome; the information hierarchy of what users should notice and do first; and the purpose of every major new section or control. Inspect and cite actual existing components, tokens, typography, spacing, layouts, navigation, and interaction conventions before proposing reuse. Do not infer reuse from similar names. Record only user-approved references that were actually available; never invent a design system or claim to have seen an unavailable reference.
+
+Identify the states that apply to the requested interaction—such as loading, empty, error/retry, success, or disabled—plus responsive and keyboard/accessibility expectations. Do not impose a universal state checklist when a state is irrelevant, or reject visual choices by generic tastes; assess them against the user task and established product language. Distinguish automated checks, screenshots, and human design review in validation: a screenshot proves rendered output, not design quality, and tests prove only their actual coverage.
+
+For greenfield UI with no established direction, use the material-question workflow when the choice matters. If skip-all is selected, record consequential best judgments as existing provisional decisions or assumptions with provenance, resolution point, and fallback. For non-UI work, do not add irrelevant UI requirements; explain non-applicability only where the plan's coverage requires it.
+
+### Observable acceptance and truthful validation
+
+Replace vague goals such as “clean code,” “modern UI,” “intuitive,” or “production-ready” with observable behavior and a credible validation method. Link the relevant existing `REQ-*` requirement through `AC-*` acceptance criteria, implementation tasks, and `VAL-*` validations. Name existing tests, browser/a11y harnesses, screenshots, or human review only when inspection established that capability. Do not invent commands, numeric thresholds, component budgets, screenshots, test runs, provenance, or design approval. If validation is unavailable or incomplete, record that limitation or a properly handled planning unknown instead of fabricating a pass.
+
 ## Process
 
 1. **Orient.** Read applicable instructions and restate the bounded destination: user value, observable outcome, in-scope work, explicit non-goals, and constraints. Ask about destination only if it is materially ambiguous.
-2. **Inspect.** Investigate manifests/configuration, relevant modules, call sites, contracts, tests, docs/ADRs, analogous implementations, and validation commands. Record repository evidence before asking for facts that tools can discover.
+2. **Inspect.** Investigate manifests/configuration, relevant modules, call sites, contracts, tests, docs/ADRs, analogous implementations, and validation commands. Before proposing additions, apply the code-quality questions above; for material UI, also inspect the established product language and applicable validation capability. Record repository evidence before asking for facts that tools can discover.
 3. **Coverage scan.** Classify scope, actors, data/lifecycle, UX states, integrations/failures, security/privacy, performance/reliability, compatibility/migration, observability, terminology, and completion signals as clear, partial, missing, or not applicable.
 4. **Clarify.** Use the internal wayfinding workflow below to resolve only material user-owned decisions.
-5. **Design.** Record meaningful decisions, interfaces/contracts, data changes, compatibility, risks, rollout/rollback, test seams, and architecture. Reuse established repository patterns unless evidence justifies divergence.
+5. **Design.** Record meaningful decisions, interfaces/contracts, data changes, compatibility, risks, rollout/rollback, test seams, and architecture. Reuse established repository patterns unless evidence justifies divergence, and choose the smallest coherent approach that preserves required behavior.
 6. **Decompose.** Build dependency-aware executable tasks and detailed decomposition subtasks. Prefer independently verifiable vertical slices. For migrations/refactors, explicitly cover compatibility, rollout/backfill, rollback, and final contraction where relevant.
-7. **Audit.** Before publishing, check traceability, contradictions, unsupported specifics, stale assumptions, scope creep, and validation feasibility. Publish only if every known requirement can be implemented and proven.
+7. **Audit.** Before publishing, check traceability, contradictions, unsupported specifics, stale assumptions, scope creep, reuse and simplification decisions, and validation feasibility. Publish only if every known requirement can be implemented and proven without claiming unavailable evidence.
 8. Call `plan_publish` once with the complete plan. Do not use generic write/edit tools to create the plan.
 
 ## Built-in wayfinding workflow

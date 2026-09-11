@@ -63,3 +63,38 @@ test("/plan contains its internal wayfinding and implementation-readiness contra
     /Do not supply Mermaid, raw SVG, HTML, or a freehand diagram/i,
   );
 });
+
+// These assertions protect prompt coverage; they do not prove a model will follow the guidance.
+test("/plan text contains evidence-backed code and conditional UI guidance without a second contract", async () => {
+  const promptPath = fileURLToPath(
+    new URL("../prompts/plan.md", import.meta.url),
+  );
+  const prompt = await readFile(promptPath, "utf8");
+
+  assert.match(prompt, /Does the requested behavior need new code at all\?/i);
+  assert.match(
+    prompt,
+    /existing implementation, helper, module, or pattern can be reused/i,
+  );
+  assert.match(
+    prompt,
+    /standard library, native platform, or installed dependencies/i,
+  );
+  assert.match(prompt, /inspect relevant callers.*root-cause/i);
+  assert.match(prompt, /simpler evidence-backed alternative considered/i);
+  assert.match(prompt, /only when the request materially affects UI/i);
+  assert.match(
+    prompt,
+    /components, tokens, typography, spacing, layouts, navigation/i,
+  );
+  assert.match(prompt, /Do not infer reuse from similar names/i);
+  assert.match(prompt, /loading, empty, error\/retry, success, or disabled/i);
+  assert.match(prompt, /screenshots.*not design quality/i);
+  assert.match(
+    prompt,
+    /For non-UI work, do not add irrelevant UI requirements/i,
+  );
+  assert.match(prompt, /greenfield UI.*material-question workflow/i);
+  assert.match(prompt, /`REQ-\*`.*`AC-\*`.*`VAL-\*`/is);
+  assert.match(prompt, /do not create a parallel contract/i);
+});
